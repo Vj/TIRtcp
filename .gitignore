@@ -1,0 +1,28 @@
+# Python & Virtual Environments
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+
+# Pytest & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Engagement Reports & Sensitive Evidence Artifacts
+reports/
+*.pcap
+*.pcapng
+*.dmp
+host_evidence*.json
+procmon*.csv
+
+# OS & IDE Files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

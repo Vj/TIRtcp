@@ -1,0 +1,11 @@
+# Core Analyzer Dependencies (Phases 1-4)
+PyYAML>=6.0.1
+lief>=0.14.0
+pefile>=2023.2.7
+
+# Optional Network Acceleration (Falls back to pure-Python PCAP parser if absent)
+scapy>=2.5.0
+
+# Testing & Standalone Collector Packaging
+pytest>=8.0.0
+pyinstaller>=6.0.0

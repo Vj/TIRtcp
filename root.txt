@@ -1,0 +1,60 @@
+1. Architecture: Collector / Analyzer Split & Canonical SchemaDecoupling target-side evidence gathering from cross-platform analysis solves client-environment restrictions (e.g., locked-down VDI/citrix endpoints where Python or external tools cannot be installed) and enables deterministic offline auditing.PlaintextTIRtcp/
+├── collector/                        # Lightweight, zero-dependency target evidence gatherer (e.g., standalone PyInstaller/Go/PowerShell)
+│   ├── collect_host.py               # Gathers ACLs, Registry exports, Services/Tasks, Named Pipes, COM/URI handlers
+│   └── manifest_schema.json          # Schema for raw host_evidence.json bundle
+├── analyzer/                         # Cross-platform core engine (runs on analyst's Windows/Linux/macOS workstation)
+│   ├── tirtcp.py                     # Main CLI (--target, --evidence, --pcap, --compliance [general|bfsi], --authorized, --engagement-id)
+│   ├── core/
+│   │   ├── schema.py                 # Canonical Finding dataclass/Pydantic model (JSON, SARIF, HTML outputs)
+│   │   ├── auth_gate.py              # Enforces --authorized + --engagement-id before running invasive runtime/memory modules
+│   │   ├── severity_splitter.py      # Splits bundled findings into granular severities
+│   │   └── report_renderer.py        # Renders single-format HTML report from canonical JSON (never couples check logic to HTML)
+│   ├── modules/
+│   │   ├── static_audit/
+│   │   │   ├── binary_hardening.py   # PE (HIGH_ENTROPY_VA, DYNAMIC_BASE, NX_COMPAT, GUARD_CF, x86-only SafeSEH), ELF, Mach-O
+│   │   │   ├── signature_audit.py    # Authenticode/codesign validation (chain, timestamp, revocation via signtool/osslsigncode)
+│   │   │   ├── secrets_db_audit.py   # Embedded DB connection strings, hardcoded creds, debug PDB paths, internal IPs
+│   │   │   ├── sca_fingerprint.py    # Syft SBOM + Trivy/Grype + native DLL string/version fingerprinting (OpenSSL, zlib, libcurl)
+│   │   │   └── electron_unpack.py    # app.asar extraction, Electron Fuses, sandbox, contextIsolation, webview, custom protocols
+│   │   ├── host_offline/
+│   │   │   ├── acl_installer.py      # Evaluates host_evidence.json for writable app/update dirs, MSI custom actions, SYSTEM services/tasks
+│   │   │   ├── dll_hijack_parser.py  # Static IAT audit + Procmon CSV/PML log parser (NAME NOT FOUND in writable paths)
+│   │   │   ├── storage_logs.py       # Local SQLite/Registry/Config secrets + local log files leaking PII/tokens
+│   │   │   └── ipc_uri_audit.py      # Named Pipes, COM/DCOM permissions, RPC endpoints, custom URI scheme handlers
+│   │   ├── network_protocol/
+│   │   │   ├── tls_inspector.py      # Non-HTTP TLS probing (testssl/sslyze) & certificate pinning checks
+│   │   │   └── pcap_analyzer.py      # PyShark/Scapy parser for cleartext TCP/UDP, direct DB wire protocols, unsigned update URLs
+│   │   └── runtime_gated/            # Strictly gated behind --authorized + --engagement-id
+│   │       └── memory_retention.py   # Post-logout process memory check (emits "Evidence of Retention" + confidence score)
+│   └── playbooks/
+│       └── manual_playbooks.yaml     # Structured guides for Frida, API Monitor, dnSpy, Procmon, Wireshark
+└── config/
+    ├── compliance_map.yaml           # Versioned mappings with "last_verified" metadata and "supports" phrasing
+    └── native_signatures.yaml        # Version regexes for unindexed native C/C++ libraries
+Canonical Finding Schema (schema.py)Every check module emits this exact structure. Reports (HTML, JSON, or SARIF for CI/CD) are pure projections of this schema:JSON{
+  "check_id": "TCP-BIN-004",
+  "title": "Missing Control Flow Guard (CFG) on Main Executable",
+  "status": "Fail",
+  "severity": "Medium",
+  "confidence": "High",
+  "affected_asset": "C:\\Program Files\\ClientApp\\ClientApp.exe",
+  "evidence": {
+    "pe_dll_characteristics": "0x8140",
+    "missing_flags": ["IMAGE_DLLCHARACTERISTICS_GUARD_CF"],
+    "architecture": "x64"
+  },
+  "remediation": "Recompile the binary with the /guard:cf compiler and linker flags enabled.",
+  "compliance_support": [
+    { "framework": "CWE", "control": "CWE-119 / CWE-693", "relation": "direct" },
+    { "framework": "OWASP_ASVS_v4.0.3", "control": "V14.2.1", "relation": "supports" }
+  ],
+  "authorization_context": {
+    "gated": false,
+    "engagement_id": "ENG-2026-042"
+  }
+}
+Allowed status values: Fail, Verified Pass, Evidence of Retention (for noisy memory checks), Tooling Gap, Manual Required.2. Tightened Compliance Mapping (compliance_map.yaml)Every HTML report header and finding card must explicitly state that findings "support security posture assessment against" the selected frameworks—never that the tool certifies compliance.FrameworkVersion / StatusScoping & Mapping Strategy in TIRtcpPCI DSSv4.0.1 (v4.0 retired Dec 2024)Active when --compliance pci or bfsi is passed. Maps cleartext transmission to Req 4.2.1, local PAN/token storage to Req 3.3 / 3.5, and missing binary/update integrity checks to Req 6.3.2 / 6.4.OWASP ASVS / MASVS & Desktop Top 10ASVS v4.0.3 / MASVS v2.1.0 / Desktop v1.0Pairs legacy OWASP Desktop App Top 10 IDs with CWE and OWASP ASVS/MASVS controls (e.g., Storage, Crypto, Network, Platform Interaction) so engineering teams receive modern, actionable requirements.CERT-In Directions28 April 2022 DirectionsTagged as relation: informational_support (never Pass/Fail). Maps local audit-trail timestamp presence and structured logging checks to support the client's 6-hour incident analysis and 180-day log retention obligations.RBI Master DirectionsDigital Payment Security Controls (2021)Conditional (--compliance bfsi only). Evaluates anti-tampering/signature integrity, secure local storage, session timeout enforcement, and TLS 1.2+ transport for regulated financial entities and their vendors.DPDP Act & RulesDPDP Act 2023 & Rules 2025Maps plaintext PII in local files, SQLite databases, and verbose application logs to the general obligation of "Reasonable Security Safeguards" (preventing personal data breaches) rather than over-specifying unverified technical clauses.Metadata Header in compliance_map.yaml:YAMLmetadata:
+  schema_version: "1.1.0"
+  last_verified: "2026-11-24"
+  disclaimer: "Automated checks support technical gap analysis and do not constitute formal regulatory certification."
+3. Technical Upgrades & Real-World Thick-Client ChecksA. Static, Binary & Supply-Chain AccuracyArchitecture-Aware PE Hardening: Checks DYNAMIC_BASE (ASLR), HIGH_ENTROPY_VA (64-bit ASLR), NX_COMPAT (DEP), and GUARD_CF (CFG). Enforces SafeSEH (IMAGE_DLLCHARACTERISTICS_NO_SEH / Load Config SEHandlerTable) strictly on x86 (32-bit) PE binaries, avoiding false positives on x64 binaries where exception handling is table-based.Full Code Signing Verification: Wraps signtool verify /pa /all (Windows) or osslsigncode verify (Linux/macOS) to check not only signature presence, but certificate chain trust, RFC 3161 timestamp validity, and CRL/OCSP revocation status.Hybrid SCA (SBOM + Native Fingerprinting): Generates a CycloneDX/SPDX SBOM via Syft and scans managed packages (JAR, NuGet, npm) with Trivy/Grype, supplemented by regex/binary string version extraction for statically or dynamically linked native libraries (OpenSSL, libcurl, zlib, SQLite).Deep Electron Auditing: Unpacks app.asar and inspects BrowserWindow preferences (nodeIntegration, contextIsolation, sandbox, webSecurity), <webview> tag usage, custom protocol registration (protocol.registerFileProtocol), Electron Fuses (RunAsNode, EnableCookieEncryption, OnlyLoadAppFromAsar), and bundled Chromium/Electron EOL versions.B. Host, Installer, Update & Database ChecksRuntime-Informed DLL Hijacking: Combines static Import Address Table (IAT) checks with a Procmon CSV/XML log parser (Result == "NAME NOT FOUND" where Path resolves to a directory writable by Users or Authenticated Users).Direct Database Connection & Credential Audit: Scans config files (.config, .ini, .properties, .yaml), decompiled resources, and PCAP traffic (TDS/MSSQL, TNS/Oracle, MySQL, PostgreSQL wire protocols) for thick clients connecting directly to backend databases with embedded credentials.Auto-Update Security: Inspects updater configs and binaries for http:// update endpoints, missing cryptographic signature verification on downloaded installers/patches, and user-writable staging directories.Installer, Service & Task Misconfigurations: Audits MSI packages (Custom Actions executing without impersonation/rollback protection, writable temp folders during install), Windows Services (binPath unquoted or writable), and Scheduled Tasks running under NT AUTHORITY\SYSTEM.Debug Artifacts & PII-Leaking Logs: Flags shipped .pdb symbol files, DEBUG compilation flags, and local .log files containing bearer tokens, session IDs, passwords, or PII (directly supporting DPDP safeguard reviews).Expanded IPC & Handler Audit: Evaluates ACLs on Windows Named Pipes, COM/DCOM AppID launch/access permissions, local RPC endpoints, and registered custom URI schemes (myapp://) susceptible to argument injection.C. Gated Runtime & Manual Playbook CoverageGated Post-Logout Memory Inspection (--authorized): Requires both --authorized and --engagement-id (recorded in the HTML report audit banner). Captures process memory strings before and after logout; flags lingering credentials as Evidence of Retention with a Low/Medium/High confidence rating (accounting for unallocated heap artifacts) rather than an automatic Fail.Tool-Specific Manual Playbooks (Manual Required): When automated static/host checks detect indicators of client-side controls or custom protocols, TIRtcp attaches targeted manual verification cards:dnSpy / ILSpy: Inspecting and patching client-side boolean authorization or license checks in .NET assemblies.Frida: Hooking custom TLS certificate pinning routines or native crypto functions at runtime.API Monitor: Tracing LoadLibraryW, CryptProtectData, and CreateProcessW parameters live.Procmon: Capturing boot/runtime NAME NOT FOUND DLL and registry lookups.Wireshark / Burp Invisible Proxy: Replaying non-HTTP TCP frames and testing server-side state validation.4. Revised 4-Phase Implementation RoadmapPhase 1 — MVP (Offline Core & Static/Host Essentials):Build schema.py (canonical JSON/SARIF/HTML model), compliance_map.yaml (PCI DSS v4.0.1, CWE/ASVS, CERT-In, conditional RBI, DPDP), binary_hardening.py (with x86-only SafeSEH), signature_audit.py, secrets_db_audit.py (including debug artifacts & log PII checks), sca_fingerprint.py, basic filesystem ACL checks, and the HTML report renderer.Phase 2 — Network & Protocol Layer (Cross-Platform):Build tls_inspector.py (non-HTTP TLS/pinning checks) and pcap_analyzer.py (cleartext TCP/UDP, direct DB wire-protocol detection, insecure auto-update traffic). Delivers high-impact findings without requiring target-host installation.Phase 3 — Windows Collector, Managed Runtimes & IPC:Build the standalone Windows collector/ (host_evidence.json bundle), dll_hijack_parser.py (IAT + Procmon CSV parser), electron_unpack.py (including Fuses), installer/service/task checks, and ipc_uri_audit.py (Named Pipes, COM/DCOM, custom URIs).Phase 4 — Gated Runtime & Memory Hygiene:Implement auth_gate.py (--authorized + --engagement-id) and memory_retention.py with confidence-scored Evidence of Retention reporting.

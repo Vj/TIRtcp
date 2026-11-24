@@ -1,0 +1,8 @@
+Collect read-only evidence on the Windows host:
+
+PowerShell
+.\tirtcp-collector.exe --app-dir "C:\Program Files\ClientApp" --filter "ClientApp" --output .\host_evidence.json
+Analyze offline on your workstation (Linux, macOS, or Windows):
+
+Bash
+python -m analyzer.tirtcp --target ./ClientApp --evidence ./host_evidence.json --compliance bfsi --engagement-id ENG-2026-04
