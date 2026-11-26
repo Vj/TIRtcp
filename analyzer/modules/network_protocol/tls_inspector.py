@@ -5,7 +5,6 @@ Maps to check_id: TCP-NET-001
 
 from __future__ import annotations
 
-import datetime
 import json
 import os
 import re
@@ -27,14 +26,18 @@ from analyzer.core.schema import (
     Severity,
 )
 
-
-
 CONFIG_EXTS = {".config", ".xml", ".json", ".yaml", ".yml", ".ini", ".properties", ".conf", ".cfg"}
 ENDPOINT_REGEX = re.compile(
     r"\b(?:https?|tls|ssl|tcp)://([a-zA-Z0-9.-]+):([1-9][0-9]{1,4})\b",
     re.IGNORECASE,
 )
 WEAK_CIPHER_TOKENS = ("RC4", "DES", "3DES", "MD5", "NULL", "EXPORT", "ADH", "AECDH")
+_LOCAL_REFUSAL_MARKERS = (
+    "UNSUPPORTED_PROTOCOL",
+    "NO_PROTOCOLS_AVAILABLE",
+    "NO_CIPHERS_AVAILABLE",
+    "UNKNOWN_PROTOCOL",
+)
 
 
 def discover_endpoints_from_configs(target_path: Path) -> Set[Tuple[str, int]]:
@@ -69,21 +72,23 @@ def discover_endpoints_from_configs(target_path: Path) -> Set[Tuple[str, int]]:
     return endpoints
 
 
-_LOCAL_REFUSAL_MARKERS = ("UNSUPPORTED_PROTOCOL", "NO_PROTOCOLS_AVAILABLE", "NO_CIPHERS_AVAILABLE", "UNKNOWN_PROTOCOL")
-
-
-def _probe_tls_version(host: str, port: int, tls_ver: ssl.TLSVersion, timeout: float = 5.0) -> Optional[bool]:
-    """Tri-state legacy-protocol probe.
-
-    True  = server completed a handshake at that version
-    False = server explicitly refused it (TLS alert / protocol error)
-    None  = INCONCLUSIVE (local OpenSSL cannot offer it, network error, timeout). The old boolean version
-            returned False here, so a modern analyst workstation produced a bogus 'rejected TLS 1.0/1.1' pass."""
+def _probe_tls_version(
+    host: str,
+    port: int,
+    tls_ver: ssl.TLSVersion,
+    timeout: float = 5.0,
+) -> Optional[bool]:
+    """
+    Tri-state legacy-protocol probe:
+      True  = server completed a handshake at that version
+      False = server explicitly refused it (TLS alert / protocol error)
+      None  = INCONCLUSIVE (local OpenSSL cannot offer it, network error, or timeout)
+    """
     ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
     try:
-        ctx.set_ciphers("ALL:@SECLEVEL=0")   # OpenSSL 3 / distro defaults refuse legacy suites at SECLEVEL>=1
+        ctx.set_ciphers("ALL:@SECLEVEL=0")
         ctx.minimum_version = tls_ver
         ctx.maximum_version = tls_ver
     except (ValueError, AttributeError, ssl.SSLError):
@@ -97,7 +102,12 @@ def _probe_tls_version(host: str, port: int, tls_ver: ssl.TLSVersion, timeout: f
         msg = str(exc).upper()
         if any(m in msg for m in _LOCAL_REFUSAL_MARKERS):
             return None
-        if "ALERT" in msg or "WRONG_VERSION" in msg or "UNEXPECTED_EOF" in msg or "HANDSHAKE_FAILURE" in msg:
+        if (
+            "ALERT" in msg
+            or "WRONG_VERSION" in msg
+            or "UNEXPECTED_EOF" in msg
+            or "HANDSHAKE_FAILURE" in msg
+        ):
             return False
         return None
     except (OSError, socket.timeout):
@@ -117,18 +127,11 @@ def _inspect_endpoint_native(host: str, port: int, timeout: float = 6.0) -> Dict
         "cert_subject": None,
         "cert_issuer": None,
         "cert_not_after": None,
+        "cert_days_remaining": None,
         "deprecated_protocols_accepted": [],
         "deprecated_protocols_untested": [],
     }
 
-    not_after_str = cert.get("notAfter")
-    if not_after_str:
-        try:
-            exp_ts = ssl.cert_time_to_seconds(not_after_str)
-            days_remaining = int((exp_ts - time.time()) / 86400)
-            result["cert_days_remaining"] = days_remaining
-        except Exception:
-            pass
     # 1. Strict Certificate & Modern TLS Verification
     strict_ctx = ssl.create_default_context()
     try:
@@ -141,7 +144,14 @@ def _inspect_endpoint_native(host: str, port: int, timeout: float = 6.0) -> Dict
                 cert = ssock.getpeercert() or {}
                 result["cert_subject"] = str(cert.get("subject", ""))
                 result["cert_issuer"] = str(cert.get("issuer", ""))
-                result["cert_not_after"] = cert.get("notAfter")
+                not_after_str = cert.get("notAfter")
+                result["cert_not_after"] = not_after_str
+                if not_after_str:
+                    try:
+                        exp_ts = ssl.cert_time_to_seconds(not_after_str)
+                        result["cert_days_remaining"] = int((exp_ts - time.time()) / 86400)
+                    except Exception:
+                        pass
     except ssl.SSLCertVerificationError as cert_err:
         result["tls_supported"] = True
         result["cert_valid"] = False
@@ -194,10 +204,12 @@ def _run_testssl_if_available(host: str, port: int) -> Optional[Dict[str, Any]]:
         pass
     return None
 
+
 def inspect_tls_endpoints(
     target_path: Optional[Path],
     mapper: ComplianceMapper,
     explicit_endpoints: Optional[List[str]] = None,
+    extra_discovered_endpoints: Optional[Set[Tuple[str, int]]] = None,
     scope: Optional[NetworkScope] = None,
 ) -> List[Finding]:
     check_id = "TCP-NET-001"
@@ -207,6 +219,8 @@ def inspect_tls_endpoints(
     discovered: Set[Tuple[str, int]] = set()
     if target_path and target_path.exists():
         discovered.update(discover_endpoints_from_configs(target_path))
+    if extra_discovered_endpoints:
+        discovered.update(extra_discovered_endpoints)
 
     explicit_set: Set[Tuple[str, int]] = set()
     for ep in explicit_endpoints or []:
@@ -223,7 +237,7 @@ def inspect_tls_endpoints(
         asset = f"{host}:{port}"
         is_explicit = (host, port) in explicit_set
 
-        # Default-deny discovered config endpoints unless explicitly allow-listed in --scope-file
+        # Default-deny discovered endpoints unless explicitly allow-listed in --scope-file
         if not is_explicit and (scope is None or not scope.is_allowed(host)):
             findings.append(
                 Finding(
@@ -235,8 +249,8 @@ def inspect_tls_endpoints(
                     confidence=Confidence.HIGH,
                     affected_asset=asset,
                     summary=(
-                        f"Endpoint {asset} was extracted from configuration files but was not actively "
-                        "probed because it is not listed in '--scope-file'."
+                        f"Endpoint {asset} was discovered in configuration/capture files but was not "
+                        "actively probed because it is not listed in '--scope-file'."
                     ),
                     evidence={
                         "endpoint": asset,
@@ -248,6 +262,7 @@ def inspect_tls_endpoints(
             )
             continue
 
+        probe = _inspect_endpoint_native(host, port)
         issues_found = False
 
         # 1. Deprecated TLS (< 1.2)
@@ -315,6 +330,25 @@ def inspect_tls_endpoints(
                     compliance_support=compliance_refs,
                 )
             )
+        else:
+            days_left = probe.get("cert_days_remaining")
+            if isinstance(days_left, int) and 0 <= days_left <= 30:
+                issues_found = True
+                findings.append(
+                    Finding(
+                        check_id=check_id,
+                        title=f"TLS Server Certificate Expiring Soon ({days_left} Day(s)) on {asset}",
+                        category="Network & Transport",
+                        status=FindingStatus.FAIL,
+                        severity=Severity.LOW,
+                        confidence=Confidence.HIGH,
+                        affected_asset=asset,
+                        summary=f"Certificate for {asset} expires in {days_left} day(s) ({probe.get('cert_not_after')}).",
+                        evidence=probe,
+                        remediation="Renew and deploy the server TLS certificate prior to expiration.",
+                        compliance_support=compliance_refs,
+                    )
+                )
 
         untested = probe.get("deprecated_protocols_untested") or []
         if untested and not deprecated:

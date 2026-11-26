@@ -4,7 +4,9 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-
+import struct
+import sys
+from unittest.mock import patch
 import pytest
 
 from analyzer.core.schema import FindingStatus as S

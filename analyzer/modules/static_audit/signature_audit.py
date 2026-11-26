@@ -1,284 +1,256 @@
 """
-TIRtcp Static Audit Module: Code Signing, Timestamping, and Revocation Verification.
+TIRtcp Static Audit Module: Code Signature, Timestamp & Revocation Verification
 Maps to check_id: TCP-BIN-002
 """
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
 import platform
 import re
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Any, Dict, List, Optional
 
 from analyzer.core.compliance_loader import ComplianceMapper
 from analyzer.core.schema import (
+    ComplianceRef,
     Confidence,
     Finding,
     FindingStatus,
     Severity,
 )
 
+SIGNABLE_EXTS = {".exe", ".dll", ".msi", ".sys", ".ocx", ".cab"}
 
-def _run_cmd(cmd: List[str], timeout: int = 20) -> Tuple[int, str, str]:
-    proc = subprocess.run(
-        cmd,
-        capture_output=True,
-        text=True,
-        timeout=timeout,
-        check=False,
-    )
-    return proc.returncode, proc.stdout, proc.stderr
+
+def _collect_signable_targets(target_path: Path) -> List[Path]:
+    targets: List[Path] = []
+    if target_path.is_file():
+        if target_path.suffix.lower() in SIGNABLE_EXTS:
+            targets.append(target_path)
+    elif target_path.is_dir():
+        for root, _, fnames in os.walk(target_path):
+            for fname in sorted(fnames):
+                fp = Path(root) / fname
+                if fp.suffix.lower() in SIGNABLE_EXTS:
+                    targets.append(fp)
+    return targets
 
 
 def _verify_pe_windows(bin_path: Path, signtool: str) -> Dict[str, Any]:
-    """Verify Authenticode signature, chain, timestamp, and revocation via signtool.exe."""
-    rc, out, err = _run_cmd([signtool, "verify", "/pa", "/all", "/v", str(bin_path)])
-    combined = f"{out}\n{err}"
+    proc = subprocess.run(
+        [signtool, "verify", "/pa", "/v", str(bin_path)],
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    combined = f"{proc.stdout}\n{proc.stderr}"
+    valid = proc.returncode == 0
+    has_timestamp = "timestamp" in combined.lower() and "no signature found" not in combined.lower()
     sha1_digest = bool(
-    re.search(r"(Hash Algorithm:\s*sha1|Digest Algorithm:\s*sha1|1\.3\.14\.3\.2\.26)", combined, re.IGNORECASE)
+        re.search(r"(Hash Algorithm:\s*sha1|Digest Algorithm:\s*sha1|1\.3\.14\.3\.2\.26)", combined, re.IGNORECASE)
     )
-    has_timestamp = bool(
-        re.search(r"(Timestamp Verified|The signature is timestamped)", combined, re.IGNORECASE)
-    )
-    revocation_issue = bool(
-        re.search(r"(revoked|revocation function was unable to check)", combined, re.IGNORECASE)
-    )
-    untrusted_root = bool(
-        re.search(r"(untrusted root|not trusted by the trust provider)", combined, re.IGNORECASE)
-    )
-    unsigned = bool(
-        re.search(r"(No signature found|SignTool Error: No signature)", combined, re.IGNORECASE)
-    )
-
-    signer_match = re.search(r"Issued to:\s*(.+)", combined)
-    issuer_match = re.search(r"Issued by:\s*(.+)", combined)
-    expires_match = re.search(r"Expires:\s*(.+)", combined)
-
     return {
-        "verifier": "signtool",
-        "return_code": rc,
-        "valid": rc == 0,
-        "unsigned": unsigned,
+        "verifier": "signtool.exe",
+        "valid": valid,
         "has_timestamp": has_timestamp,
-        "revocation_warning_or_failure": revocation_issue,
-        "untrusted_root": untrusted_root,
-        "signer": signer_match.group(1).strip() if signer_match else None,
-        "issuer": issuer_match.group(1).strip() if issuer_match else None,
-        "expires": expires_match.group(1).strip() if expires_match else None,
-        "raw_excerpt": combined.strip()[:1200],
+        "sha1_digest": sha1_digest,
+        "raw_output": combined[:1000],
     }
 
 
 def _verify_pe_osslsigncode(bin_path: Path, osslsigncode: str) -> Dict[str, Any]:
-    """Cross-platform PE Authenticode verification via osslsigncode."""
-    rc, out, err = _run_cmd([osslsigncode, "verify", "-in", str(bin_path)])
-    combined = f"{out}\n{err}"
-    sha1_digest = bool(
-    re.search(r"(Hash Algorithm:\s*sha1|Digest Algorithm:\s*sha1|1\.3\.14\.3\.2\.26)", combined, re.IGNORECASE)
+    proc = subprocess.run(
+        [osslsigncode, "verify", "-in", str(bin_path)],
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
     )
-    unsigned = "No signature found" in combined
-    has_timestamp = bool(re.search(r"Timestamp\s*:\s*Verified|CounterSignature", combined, re.I))
-    revocation_issue = bool(re.search(r"revoked|CRL", combined, re.I)) and rc != 0
-    untrusted_root = bool(re.search(r"self signed|unable to get local issuer", combined, re.I))
-
+    combined = f"{proc.stdout}\n{proc.stderr}"
+    valid = proc.returncode == 0 and "Succeeded" in combined
+    has_timestamp = "Timestamp" in combined
+    sha1_digest = bool(
+        re.search(r"(Message digest algorithm\s*:\s*SHA1|1\.3\.14\.3\.2\.26)", combined, re.IGNORECASE)
+    )
     return {
         "verifier": "osslsigncode",
-        "return_code": rc,
-        "valid": rc == 0,
-        "unsigned": unsigned,
+        "valid": valid,
         "has_timestamp": has_timestamp,
-        "revocation_warning_or_failure": revocation_issue,
-        "untrusted_root": untrusted_root,
-        "raw_excerpt": combined.strip()[:1200],
+        "sha1_digest": sha1_digest,
+        "raw_output": combined[:1000],
     }
 
 
 def _verify_macos_codesign(bin_path: Path, codesign: str) -> Dict[str, Any]:
-    """Verify macOS Mach-O / .app bundle signature and timestamp."""
-    rc, out, err = _run_cmd(
-        [codesign, "--verify", "--deep", "--strict", "--verbose=2", str(bin_path)]
+    proc = subprocess.run(
+        [codesign, "--verify", "--deep", "--strict", "--verbose=2", str(bin_path)],
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
     )
-    combined = f"{out}\n{err}"
-    unsigned = "code object is not signed at all" in combined.lower()
-
-    # Check detailed metadata including timestamp
-    _, info_out, info_err = _run_cmd([codesign, "-dv", "--verbose=4", str(bin_path)])
-    info_combined = f"{info_out}\n{info_err}"
-    has_timestamp = "Timestamp=" in info_combined
-
+    combined = f"{proc.stdout}\n{proc.stderr}"
+    valid = proc.returncode == 0
     return {
         "verifier": "codesign",
-        "return_code": rc,
-        "valid": rc == 0,
-        "unsigned": unsigned,
-        "has_timestamp": has_timestamp,
-        "revocation_warning_or_failure": "revoked" in combined.lower(),
-        "untrusted_root": "not signed by apple" in combined.lower() and rc != 0,
-        "raw_excerpt": f"{combined}\n{info_combined}".strip()[:1200],
+        "valid": valid,
+        "has_timestamp": "Timestamp=" in combined,
+        "sha1_digest": False,
+        "raw_output": combined[:1000],
     }
 
 
-def _locate_windows_signtool() -> Optional[str]:
-    found = shutil.which("signtool") or shutil.which("signtool.exe")
-    if found:
-        return found
-    kits_root = Path(r"C:\Program Files (x86)\Windows Kits\10\bin")
-    if kits_root.exists():
-        candidates = sorted(kits_root.glob("**/x64/signtool.exe"), reverse=True)
-        if candidates:
-            return str(candidates[0])
-    return None
+def _verify_single_file(
+    bin_path: Path,
+    signtool: Optional[str],
+    osslsigncode: Optional[str],
+    codesign: Optional[str],
+    compliance_refs: List[ComplianceRef],
+) -> List[Finding]:
+    check_id = "TCP-BIN-002"
+    res: Optional[Dict[str, Any]] = None
+
+    try:
+        if signtool:
+            res = _verify_pe_windows(bin_path, signtool)
+        elif osslsigncode:
+            res = _verify_pe_osslsigncode(bin_path, osslsigncode)
+        elif codesign and platform.system() == "Darwin":
+            res = _verify_macos_codesign(bin_path, codesign)
+    except subprocess.TimeoutExpired:
+        return [
+            Finding(
+                check_id=check_id,
+                title=f"Code Signature Verification Timed Out ({bin_path.name})",
+                category="Binary & Supply Chain Integrity",
+                status=FindingStatus.TOOLING_GAP,
+                severity=Severity.INFO,
+                confidence=Confidence.LOW,
+                affected_asset=str(bin_path),
+                summary="Signature verifier exceeded 30s timeout.",
+                compliance_support=compliance_refs,
+            )
+        ]
+
+    if res is None:
+        return []
+
+    findings: List[Finding] = []
+    if not res["valid"]:
+        findings.append(
+            Finding(
+                check_id=check_id,
+                title="Unsigned Binary or Invalid Code Signature Chain",
+                category="Binary & Supply Chain Integrity",
+                status=FindingStatus.FAIL,
+                severity=Severity.HIGH,
+                confidence=Confidence.HIGH,
+                affected_asset=str(bin_path),
+                summary=f"Executable/library {bin_path.name} failed cryptographic Authenticode/codesign verification.",
+                evidence=res,
+                remediation="Sign all distributable executables, DLLs, and installers using a trusted code-signing certificate with RFC 3161 timestamping.",
+                compliance_support=compliance_refs,
+            )
+        )
+    else:
+        if not res["has_timestamp"]:
+            findings.append(
+                Finding(
+                    check_id=check_id,
+                    title="Valid Code Signature Missing Trusted Timestamp",
+                    category="Binary & Supply Chain Integrity",
+                    status=FindingStatus.FAIL,
+                    severity=Severity.LOW,
+                    confidence=Confidence.HIGH,
+                    affected_asset=str(bin_path),
+                    summary="Signature lacks a countersignature timestamp and will fail validation once the signing certificate expires.",
+                    evidence=res,
+                    remediation="Re-sign binaries with an RFC 3161 trusted timestamp server.",
+                    compliance_support=compliance_refs,
+                )
+            )
+        if res.get("sha1_digest"):
+            findings.append(
+                Finding(
+                    check_id=check_id,
+                    title="Code Signature Uses Deprecated SHA-1 Digest Algorithm",
+                    category="Binary & Supply Chain Integrity",
+                    status=FindingStatus.FAIL,
+                    severity=Severity.MEDIUM,
+                    confidence=Confidence.HIGH,
+                    affected_asset=str(bin_path),
+                    summary="Authenticode signature uses collision-weak SHA-1 instead of SHA-256.",
+                    evidence=res,
+                    remediation="Re-sign binaries using SHA-256 (`/fd SHA256` in signtool).",
+                    compliance_support=compliance_refs,
+                )
+            )
+        if not findings:
+            findings.append(
+                Finding(
+                    check_id=check_id,
+                    title="Valid Code Signature & Timestamp Verified",
+                    category="Binary & Supply Chain Integrity",
+                    status=FindingStatus.VERIFIED_PASS,
+                    severity=Severity.INFO,
+                    confidence=Confidence.HIGH,
+                    affected_asset=str(bin_path),
+                    summary=f"Verified cryptographic signature chain and timestamp for {bin_path.name}.",
+                    evidence=res,
+                    compliance_support=compliance_refs,
+                )
+            )
+
+    return findings
 
 
 def scan_code_signatures(
     target_path: Path,
     mapper: ComplianceMapper,
 ) -> List[Finding]:
-    """
-    Validate code signatures, certificate chain trust, timestamps, and revocation status
-    on executables, DLLs, and installers.
-    """
-    with ThreadPoolExecutor(max_workers=min(8, max(1, len(targets)))) as pool:
-        future_map = {pool.submit(_verify_single_file, f, signtool, osslsigncode, codesign): f for f in targets}
-        for fut in as_completed(future_map):
-            res = fut.result()
-            if res is not None:
-                findings.extend(res)
-
     check_id = "TCP-BIN-002"
     compliance_refs = mapper.resolve(check_id)
-    findings: List[Finding] = []
-
-    signtool = _locate_windows_signtool() if platform.system() == "Windows" else None
-    osslsigncode = shutil.which("osslsigncode")
-    codesign = shutil.which("codesign") if platform.system() == "Darwin" else None
-
-    pe_exts = {".exe", ".dll", ".msi", ".sys"}
-    targets: List[Path] = []
-    if target_path.is_file():
-        targets.append(target_path)
-    elif target_path.is_dir():
-        for root, _, files in os.walk(target_path):
-            for fname in files:
-                fpath = Path(root) / fname
-                if fpath.suffix.lower() in pe_exts or fpath.suffix.lower() == ".dylib":
-                    targets.append(fpath)
+    targets = _collect_signable_targets(target_path)
 
     if not targets:
-        return findings
+        return []
 
-    for bin_file in targets:
-        ext = bin_file.suffix.lower()
-        result: Optional[Dict[str, Any]] = None
+    signtool = shutil.which("signtool")
+    osslsigncode = shutil.which("osslsigncode")
+    codesign = shutil.which("codesign")
 
-        if ext in pe_exts:
-            if signtool:
-                result = _verify_pe_windows(bin_file, signtool)
-            elif osslsigncode:
-                result = _verify_pe_osslsigncode(bin_file, osslsigncode)
-            else:
-                findings.append(
-                    Finding(
-                        check_id=check_id,
-                        title="Authenticode Verifier Unavailable",
-                        category="Binary Integrity",
-                        status=FindingStatus.TOOLING_GAP,
-                        severity=Severity.INFO,
-                        confidence=Confidence.HIGH,
-                        affected_asset=str(bin_file),
-                        summary="Neither 'signtool.exe' (Windows SDK) nor 'osslsigncode' is available on PATH.",
-                        evidence={"platform": platform.system()},
-                        remediation="Install Windows SDK (signtool.exe) or osslsigncode to verify PE signatures.",
-                        compliance_support=compliance_refs,
-                    )
-                )
-                break  # Avoid repeating the same tooling gap per file
-        elif ext == ".dylib" and codesign:
-            result = _verify_macos_codesign(bin_file, codesign)
+    if not (signtool or osslsigncode or (codesign and platform.system() == "Darwin")):
+        return [
+            Finding(
+                check_id=check_id,
+                title="Authenticode Verifier Unavailable",
+                category="Binary & Supply Chain Integrity",
+                status=FindingStatus.TOOLING_GAP,
+                severity=Severity.INFO,
+                confidence=Confidence.HIGH,
+                affected_asset=str(target_path),
+                summary=(
+                    f"Found {len(targets)} signable binary/library file(s), but neither 'signtool.exe', "
+                    "'osslsigncode', nor macOS 'codesign' was found on PATH."
+                ),
+                evidence={"signable_files_count": len(targets)},
+                remediation="Install Windows SDK (signtool.exe) or osslsigncode to verify code signatures.",
+                compliance_support=compliance_refs,
+            )
+        ]
 
-        if result is None:
-            continue
-
-        # Evaluate verification outcomes
-        if result["unsigned"]:
-            findings.append(
-                Finding(
-                    check_id=check_id,
-                    title="Unsigned Executable or Library Shipped in Client Package",
-                    category="Binary Integrity",
-                    status=FindingStatus.FAIL,
-                    severity=Severity.HIGH if ext in {".exe", ".msi"} else Severity.MEDIUM,
-                    confidence=Confidence.HIGH,
-                    affected_asset=str(bin_file),
-                    summary="Binary lacks a digital signature, preventing OS and updater integrity validation.",
-                    evidence=result,
-                    remediation=(
-                        "Sign all executables, DLLs, and installers using a trusted code-signing "
-                        "certificate with an RFC 3161 trusted timestamp."
-                    ),
-                    compliance_support=compliance_refs,
-                )
-            )
-        elif not result["valid"]:
-            sev = Severity.HIGH if result["revocation_warning_or_failure"] else Severity.MEDIUM
-            findings.append(
-                Finding(
-                    check_id=check_id,
-                    title="Invalid, Untrusted, or Revoked Code Signature",
-                    category="Binary Integrity",
-                    status=FindingStatus.FAIL,
-                    severity=sev,
-                    confidence=Confidence.HIGH,
-                    affected_asset=str(bin_file),
-                    summary=(
-                        "Digital signature validation failed (broken hash, untrusted/self-signed root, "
-                        "expired certificate without timestamp, or certificate revocation)."
-                    ),
-                    evidence=result,
-                    remediation=(
-                        "Re-sign the binary with a valid, non-revoked certificate issued by a publicly "
-                        "trusted CA and include an RFC 3161 timestamp."
-                    ),
-                    compliance_support=compliance_refs,
-                )
-            )
-        elif not result["has_timestamp"]:
-            findings.append(
-                Finding(
-                    check_id=check_id,
-                    title="Valid Code Signature Lacks Trusted Timestamp",
-                    category="Binary Integrity",
-                    status=FindingStatus.FAIL,
-                    severity=Severity.LOW,
-                    confidence=Confidence.HIGH,
-                    affected_asset=str(bin_file),
-                    summary=(
-                        "Binary signature is currently valid, but lacks a cryptographic timestamp; "
-                        "signature trust will fail once the signing certificate expires."
-                    ),
-                    evidence=result,
-                    remediation="Include an RFC 3161 timestamp server URL (/tr and /td SHA256) during signing.",
-                    compliance_support=compliance_refs,
-                )
-            )
-        else:
-            findings.append(
-                Finding(
-                    check_id=check_id,
-                    title="Valid Code Signature and Trusted Timestamp Verified",
-                    category="Binary Integrity",
-                    status=FindingStatus.VERIFIED_PASS,
-                    severity=Severity.INFO,
-                    confidence=Confidence.HIGH,
-                    affected_asset=str(bin_file),
-                    summary="Binary has a valid digital signature, trusted chain, and valid timestamp.",
-                    evidence=result,
-                    compliance_support=compliance_refs,
-                )
-            )
+    findings: List[Finding] = []
+    with ThreadPoolExecutor(max_workers=min(8, max(1, len(targets)))) as pool:
+        future_map = {
+            pool.submit(_verify_single_file, f, signtool, osslsigncode, codesign, compliance_refs): f
+            for f in targets
+        }
+        for fut in as_completed(future_map):
+            findings.extend(fut.result())
 
     return findings

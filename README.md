@@ -93,6 +93,12 @@ Run the portable collector under the target user context (and optionally as Admi
   --filter "TargetClient" `
   --output .\host_evidence.json
 
+.\tirtcp-collector.exe `
+  --app-dir "C:\Users\ADMIN\Downloads\vpro_secret\ModernPaint.exe" `
+  --filter "TargetClient" `
+  --output .\host_evidence.json
+
+
 (Optional) Export a Process Monitor (Procmon) trace as procmon.csv during normal application workflows (login, plugin load, auto-update) and capture network traffic to capture.pcap.
 
 Step 2: Run Offline Analysis (On Analyst Workstation)
@@ -108,6 +114,14 @@ tirtcp \
   --engagement-id ENG-2026-014 \
   --output ./reports
 
+tirtcp \
+  --target ./C:\Users\ADMIN\Downloads\vpro_secret\ModernPaint.exe \
+  --evidence ./host_evidence.json \
+  --pcap ./capture.pcap \
+  --procmon-csv ./procmon.csv \
+  --compliance general \
+  --engagement-id ENG-2026-014 \
+  --output ./reports
 
 BFSI / Regulated Payment Assessment (--compliance bfsi):
 Activates PCI DSS v4.0.1 and RBI Digital Payment Security Controls (2021) mappings alongside DPDP Act 2023 / Rules 2025, OWASP ASVS v4.0.3 / MASVS v2.1.0, and CWE:

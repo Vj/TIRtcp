@@ -329,7 +329,6 @@ def main() -> int:
     # -------------------------------------------------------------------------
     print("\n[Phase 2] Network Transport & Wire-Protocol Analysis")
     pcap_endpoints: set[tuple[str, int]] = set()
-
     if args.pcap is not None:
         _run_stage(
             f"Offline PCAP/PCAPNG wire-protocol & SNI extraction ({args.pcap.name})",
@@ -337,8 +336,7 @@ def main() -> int:
             str(args.pcap),
             lambda: analyze_pcap_capture(args.pcap, mapper, discovered_endpoints_out=pcap_endpoints),
             report,
-    )
-
+        )
     if not args.no_active_probe:
         _run_stage(
             "Scope-gated TLS version, cipher & certificate inspection",
@@ -352,25 +350,10 @@ def main() -> int:
                 scope=net_scope,
             ),
             report,
-    )
-    if not args.no_active_probe:
-        _run_stage(
-            "Non-HTTP TLS version, cipher & certificate inspection",
-            "TCP-NET-001",
-            str(args.target),
-            lambda: inspect_tls_endpoints(args.target, mapper, explicit_endpoints=args.endpoints, scope=net_scope),
-            report,
         )
     else:
         print("  -> TLS probing skipped (--no-active-probe)")
-    if args.pcap is not None:
-        _run_stage(
-            f"Offline PCAP wire-protocol & cleartext capture audit ({args.pcap.name})",
-            "TCP-NET-001",
-            str(args.pcap),
-            lambda: analyze_pcap_capture(args.pcap, mapper),
-            report,
-        )
+    
 
     # -------------------------------------------------------------------------
     # PHASE 3: Electron Fuses/ASAR, DLL Search-Order & Offline Host IPC/URI

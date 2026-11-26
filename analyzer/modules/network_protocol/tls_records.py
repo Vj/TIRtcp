@@ -83,3 +83,40 @@ def _ext_sni(ext_blob: bytes) -> Optional[str]:
                 return body[pos : pos + name_len].decode("ascii", errors="ignore").lower()
             pos += name_len
     return None
+
+
+def parse_tls_hello(payload: bytes) -> Optional[Dict[str, Any]]:
+    """Return {'kind','effective_version','effective_name','legacy','sni'} for the first hello in payload, else None."""
+    try:
+        if len(payload) < 9 or payload[0] != 0x16 or payload[1] != 0x03:
+            return None
+        hs_type = payload[5]
+        if hs_type not in (1, 2):
+            return None
+        body = payload[9:]
+        legacy_ver = struct.unpack_from("!H", body, 0)[0]
+        pos = 2 + 32
+        sid_len = body[pos]; pos += 1 + sid_len
+        if hs_type == 1:
+            cs_len = struct.unpack_from("!H", body, pos)[0]; pos += 2 + cs_len
+            comp_len = body[pos]; pos += 1 + comp_len
+        else:
+            pos += 2 + 1
+        versions: List[int] = []
+        sni: Optional[str] = None
+        if pos + 2 <= len(body):
+            ext_len = struct.unpack_from("!H", body, pos)[0]
+            ext_blob = body[pos + 2 : pos + 2 + ext_len]
+            versions = _ext_supported_versions(ext_blob, is_server=(hs_type == 2))
+            if hs_type == 1:
+                sni = _ext_sni(ext_blob)
+        effective = max(versions) if versions else legacy_ver
+        return {
+            "kind": "client_hello" if hs_type == 1 else "server_hello",
+            "effective_version": effective,
+            "effective_name": VERSION_NAMES.get(effective, hex(effective)),
+            "legacy": effective < 0x0303,
+            "sni": sni,
+        }
+    except (IndexError, struct.error):
+        return None

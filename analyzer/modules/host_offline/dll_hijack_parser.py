@@ -53,11 +53,6 @@ USER_WRITABLE_PATH_FRAGMENTS = (
     "\\tmp\\",
     "\\public\\",
 )
-known_os_dlls = set(WINDOWS_KNOWN_DLLS)
-if host_evidence:
-    dll_env = host_evidence.get("dll_search_environment", {})
-    known_os_dlls.update(d.lower() for d in dll_env.get("known_dlls", []))
-    known_os_dlls.update(d.lower() for d in dll_env.get("system32_dlls", []))
 
 def _is_path_writable(
     candidate_dir: str,
@@ -176,6 +171,12 @@ def parse_procmon_csv(
     check_id = "TCP-HOST-002"
     compliance_refs = mapper.resolve(check_id)
     findings: List[Finding] = []
+    
+    known_os_dlls = set(WINDOWS_KNOWN_DLLS)
+    if host_evidence:
+        dll_env = host_evidence.get("dll_search_environment", {})
+        known_os_dlls.update(d.lower() for d in dll_env.get("known_dlls", []))
+        known_os_dlls.update(d.lower() for d in dll_env.get("system32_dlls", []))
 
     weak_acl_paths: Set[str] = set()
     if host_evidence:
