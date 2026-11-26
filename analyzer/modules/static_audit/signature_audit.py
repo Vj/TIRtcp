@@ -12,6 +12,7 @@ import shutil
 import subprocess
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from analyzer.core.compliance_loader import ComplianceMapper
 from analyzer.core.schema import (
@@ -37,7 +38,9 @@ def _verify_pe_windows(bin_path: Path, signtool: str) -> Dict[str, Any]:
     """Verify Authenticode signature, chain, timestamp, and revocation via signtool.exe."""
     rc, out, err = _run_cmd([signtool, "verify", "/pa", "/all", "/v", str(bin_path)])
     combined = f"{out}\n{err}"
-
+    sha1_digest = bool(
+    re.search(r"(Hash Algorithm:\s*sha1|Digest Algorithm:\s*sha1|1\.3\.14\.3\.2\.26)", combined, re.IGNORECASE)
+    )
     has_timestamp = bool(
         re.search(r"(Timestamp Verified|The signature is timestamped)", combined, re.IGNORECASE)
     )
@@ -74,7 +77,9 @@ def _verify_pe_osslsigncode(bin_path: Path, osslsigncode: str) -> Dict[str, Any]
     """Cross-platform PE Authenticode verification via osslsigncode."""
     rc, out, err = _run_cmd([osslsigncode, "verify", "-in", str(bin_path)])
     combined = f"{out}\n{err}"
-
+    sha1_digest = bool(
+    re.search(r"(Hash Algorithm:\s*sha1|Digest Algorithm:\s*sha1|1\.3\.14\.3\.2\.26)", combined, re.IGNORECASE)
+    )
     unsigned = "No signature found" in combined
     has_timestamp = bool(re.search(r"Timestamp\s*:\s*Verified|CounterSignature", combined, re.I))
     revocation_issue = bool(re.search(r"revoked|CRL", combined, re.I)) and rc != 0
@@ -137,6 +142,13 @@ def scan_code_signatures(
     Validate code signatures, certificate chain trust, timestamps, and revocation status
     on executables, DLLs, and installers.
     """
+    with ThreadPoolExecutor(max_workers=min(8, max(1, len(targets)))) as pool:
+        future_map = {pool.submit(_verify_single_file, f, signtool, osslsigncode, codesign): f for f in targets}
+        for fut in as_completed(future_map):
+            res = fut.result()
+            if res is not None:
+                findings.extend(res)
+
     check_id = "TCP-BIN-002"
     compliance_refs = mapper.resolve(check_id)
     findings: List[Finding] = []

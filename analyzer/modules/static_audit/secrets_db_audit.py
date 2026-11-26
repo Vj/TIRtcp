@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Pattern, Tuple
 
 from analyzer.core.compliance_loader import ComplianceMapper
+from analyzer.core.validators import aadhaar_valid, luhn_valid, pan_valid
 from analyzer.core.schema import (
     Confidence,
     Finding,
@@ -125,6 +126,11 @@ LOG_LEAK_PATTERNS: List[Tuple[str, Pattern[str], Severity]] = [
         Severity.MEDIUM,
     ),
     (
+        "Payment Card Number (PCI PAN, Luhn-valid) in Local Log",
+        re.compile(r"\b(?:\d[ -]?){12,18}\d\b"),
+        Severity.HIGH,
+    ),
+    (
         "Session / Refresh Token in Log",
         re.compile(r"""(?i)\b(?:session_id|sessiontoken|refresh_token|access_token)\b\s*[:=]\s*["']?([A-Za-z0-9._-]{12,})"""),
         Severity.HIGH,
@@ -142,11 +148,27 @@ def _redact(secret: str) -> str:
     return f"{s[:3]}****{s[-2:]}"
 
 
+_PLACEHOLDER_SHAPES = re.compile(r"(x+|\*+|\.+|<[^>]*>|\$\{[^}]*\}|%[^%]*%|\{\{[^}]*\}\})")
+
+
 def _is_placeholder(val: str) -> bool:
+    """Exact-match placeholder test. (Substring matching used to discard real secrets such as
+    'MyPassword#2026!' or 'Contest#9981x'.)"""
     low = val.strip().lower().strip("\"'")
     if len(low) < 4:
         return True
-    return any(tok in low for tok in PLACEHOLDER_TOKENS)
+    return low in PLACEHOLDER_TOKENS or bool(_PLACEHOLDER_SHAPES.fullmatch(low))
+
+
+def _validate_log_match(label: str, value: str) -> bool:
+    """Checksum validation so PAN / Aadhaar / card regexes stop firing on arbitrary IDs and timestamps."""
+    if label.startswith("Indian PAN"):
+        return pan_valid(value)
+    if label.startswith("Potential Aadhaar"):
+        return aadhaar_valid(value)
+    if label.startswith("Payment Card"):
+        return luhn_valid(value)
+    return True
 
 
 def _extract_printable_strings(data: bytes, min_len: int = 6) -> str:
@@ -319,10 +341,10 @@ def scan_secrets_db_and_debug(
                     )
 
         # 5. Local Log Files Leaking PII or Tokens (TCP-SEC-002)
-        if ext in LOG_EXTS or "log" in fpath.name.lower():
+        if ext in LOG_EXTS or (not is_binary and re.search(r"(^|[._-])logs?([._-]|$)", fpath.name.lower())):
             for label, pattern, sev in LOG_LEAK_PATTERNS:
                 matches = pattern.findall(content)
-                valid_matches = [m for m in matches if not _is_placeholder(m)]
+                valid_matches = [m for m in matches if not _is_placeholder(m) and _validate_log_match(label, m)]
                 if valid_matches:
                     dbg_hits_found = True
                     findings.append(

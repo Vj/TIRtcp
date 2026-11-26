@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from analyzer.core.compliance_loader import ComplianceMapper
+from analyzer.core.sddl import classify as classify_sddl
 from analyzer.core.schema import (
     Confidence,
     Finding,
@@ -33,7 +34,16 @@ LOW_PRIV_PRINCIPALS = (
 )
 
 # icacls permission masks indicating write/modify capability
-WRITE_MASKS = ("(F)", "(M)", "(W)", "(WD)", "(AD)", "(WA)")
+WRITE_RIGHT_TOKENS = {"F", "M", "W", "WD", "AD", "WA", "WDAC", "WO", "GW", "GA", "DC"}
+WRITE_MASKS = tuple(f"({t})" for t in sorted(WRITE_RIGHT_TOKENS))  # kept for backward compatibility
+
+
+def _ace_grants_write(ace_line: str) -> bool:
+    """icacls prints combined rights as one group, e.g. (OI)(CI)(S,WD,AD,X,DC); DENY ACEs must not count."""
+    tokens = set()
+    for group in re.findall(r"\(([^)]*)\)", ace_line):
+        tokens.update(t.strip().upper() for t in group.split(","))
+    return "DENY" not in tokens and bool(tokens & WRITE_RIGHT_TOKENS)
 
 
 def _check_windows_icacls(path: Path) -> List[str]:
@@ -56,7 +66,7 @@ def _check_windows_icacls(path: Path) -> List[str]:
                 continue
             for principal in LOW_PRIV_PRINCIPALS:
                 if principal.lower() in clean.lower():
-                    if any(mask in clean for mask in WRITE_MASKS):
+                    if _ace_grants_write(clean):
                         risky_entries.append(clean)
     except Exception:
         pass
@@ -81,11 +91,14 @@ def _evaluate_offline_evidence(
     host_evidence: Dict[str, Any],
     compliance_refs: List[Any],
 ) -> List[Finding]:
-    """Evaluate pre-collected host_evidence.json ACL, service, and installer records."""
+    """Evaluate pre-collected host_evidence.json ACL, SDDL, service, and installer records."""
     findings: List[Finding] = []
+    flagged_paths: set[str] = set()
 
+    # 1. Explicit weak_acls from collector
     for item in host_evidence.get("weak_acls", []):
         asset = item.get("path", "Unknown Path")
+        flagged_paths.add(asset.lower())
         is_updater = any(k in asset.lower() for k in UPDATER_KEYWORDS)
         findings.append(
             Finding(
@@ -105,30 +118,66 @@ def _evaluate_offline_evidence(
                     "directory or executable, enabling local privilege escalation or tampering."
                 ),
                 evidence=item,
-                remediation=(
-                    "Restrict write/modify ACLs on installation and update directories exclusively "
-                    "to Administrators and TrustedInstaller / SYSTEM."
-                ),
+                remediation="Restrict write/modify ACLs on installation and update directories exclusively to Administrators and SYSTEM.",
                 compliance_support=compliance_refs,
             )
         )
 
-    for svc in host_evidence.get("insecure_services", []):
-        findings.append(
-            Finding(
-                check_id="TCP-HOST-001",
-                title=f"Insecure Windows Service Configuration ({svc.get('service_name', 'Unknown')})",
-                category="Host & Filesystem ACLs",
-                status=FindingStatus.FAIL,
-                severity=Severity.HIGH,
-                confidence=Confidence.HIGH,
-                affected_asset=svc.get("bin_path", svc.get("service_name", "Service")),
-                summary=svc.get("issue", "Service runs with elevated privileges and weak path/ACL protections."),
-                evidence=svc,
-                remediation="Quote all service binary paths containing spaces and lock down binary/registry ACLs.",
-                compliance_support=compliance_refs,
+    # 2. SDDL classification across audited_paths (catches localized icacls or NULL DACLs)
+    for entry in host_evidence.get("audited_paths", []):
+        asset = entry.get("path", "")
+        sddl = entry.get("sddl", "")
+        if not asset or not sddl or asset.lower() in flagged_paths:
+            continue
+        verdict = classify_sddl(sddl)
+        if verdict["risky"] or verdict["has_null_dacl"]:
+            flagged_paths.add(asset.lower())
+            is_updater = any(k in asset.lower() for k in UPDATER_KEYWORDS)
+            findings.append(
+                Finding(
+                    check_id="TCP-HOST-001",
+                    title=(
+                        "Weak SDDL on Auto-Update Path"
+                        if is_updater
+                        else "Weak Filesystem SDDL Enabling Local Binary Replacement"
+                    ),
+                    category="Host & Filesystem ACLs",
+                    status=FindingStatus.FAIL,
+                    severity=Severity.HIGH,
+                    confidence=Confidence.HIGH,
+                    affected_asset=asset,
+                    summary="SDDL security descriptor grants write/generic rights to low-privileged principals.",
+                    evidence={"path": asset, "sddl": sddl, "sddl_analysis": verdict},
+                    remediation="Restrict write/modify ACLs exclusively to Administrators and TrustedInstaller / SYSTEM.",
+                    compliance_support=compliance_refs,
+                )
             )
-        )
+
+    # 3. Windows Services (unquoted path OR risky service SDDL via sc sdshow)
+    for svc in host_evidence.get("insecure_services", []):
+        svc_sddl = svc.get("sddl") or ""
+        sddl_verdict = classify_sddl(svc_sddl) if svc_sddl else {"risky": False, "has_null_dacl": False}
+        is_unquoted = bool(svc.get("unquoted_path"))
+
+        if is_unquoted or sddl_verdict["risky"] or sddl_verdict["has_null_dacl"]:
+            findings.append(
+                Finding(
+                    check_id="TCP-HOST-001",
+                    title=f"Insecure Windows Service Configuration ({svc.get('service_name', 'Unknown')})",
+                    category="Host & Filesystem ACLs",
+                    status=FindingStatus.FAIL,
+                    severity=Severity.HIGH,
+                    confidence=Confidence.HIGH,
+                    affected_asset=svc.get("bin_path", svc.get("service_name", "Service")),
+                    summary=(
+                        "Service has an unquoted binary path with spaces and/or a permissive service DACL "
+                        "allowing low-privileged users to modify service configuration."
+                    ),
+                    evidence={"service": svc, "sddl_analysis": sddl_verdict},
+                    remediation="Quote service binary paths containing spaces and harden service DACLs via `sc sdset`.",
+                    compliance_support=compliance_refs,
+                )
+            )
 
     return findings
 

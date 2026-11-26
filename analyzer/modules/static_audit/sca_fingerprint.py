@@ -13,6 +13,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+import yaml
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Pattern, Tuple
 
@@ -46,7 +47,7 @@ NATIVE_LIB_SIGNATURES: List[Tuple[str, Pattern[str], Tuple[int, ...], str]] = [
     ),
     (
         "zlib",
-        re.compile(r"\bzlib\s+([0-9]+\.[0-9]+\.[0-9]+)\b"),
+        re.compile(r"\b(?:inflate|deflate)\s+([0-9]+\.[0-9]+\.[0-9]+)\s+Copyright 1995-"),
         (1, 3, 1),
         "zlib versions prior to 1.3.1 are affected by memory corruption vulnerabilities (e.g., CVE-2022-37434).",
     ),
@@ -108,6 +109,47 @@ def _run_cmd(cmd: List[str], timeout: int = 120) -> Tuple[int, str, str]:
     )
     return proc.returncode, proc.stdout, proc.stderr
 
+
+DEFAULT_BASELINES_PATH = Path(__file__).resolve().parents[3] / "config" / "baselines.yaml"
+
+
+def load_native_baselines(baselines_path: Optional[Path] = None) -> List[Dict[str, Any]]:
+    path = baselines_path or DEFAULT_BASELINES_PATH
+    if not path.exists():
+        return []
+    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    libs: List[Dict[str, Any]] = []
+    for lib_name, cfg in (data.get("native_libraries") or {}).items():
+        libs.append(
+            {
+                "name": lib_name,
+                "pattern": re.compile(cfg["pattern"]),
+                "severity": Severity.HIGH if cfg.get("severity", "").lower() == "high" else Severity.MEDIUM,
+                "advisory": cfg.get("advisory", ""),
+                "branches": cfg.get("branches", []),
+            }
+        )
+    return libs
+
+
+def _evaluate_branch_version(detected: str, branches: List[Dict[str, Any]]) -> Tuple[bool, str, str]:
+    """
+    Returns (is_vulnerable, baseline_label, status_reason).
+    Matches the most specific branch prefix first (e.g., '3.1.' over '3.').
+    """
+    sorted_branches = sorted(branches, key=lambda b: len(b.get("prefix", "")), reverse=True)
+    for br in sorted_branches:
+        prefix = br.get("prefix", "")
+        if detected.startswith(prefix):
+            status = br.get("status", "supported").lower()
+            min_safe = br.get("min_safe", "0.0.0")
+            min_tuple = _parse_version_tuple(min_safe)
+            if status == "eol":
+                return True, f"EOL branch ({prefix}x)", f"Release branch {prefix}x is End-of-Life (EOL)."
+            if _is_version_outdated(detected, min_tuple):
+                return True, min_safe, f"Version {detected} is below branch minimum {min_safe}."
+            return False, min_safe, "Supported"
+    return False, "unknown", "Unmapped branch"
 
 # ---------------------------------------------------------------------------
 # Stage 1: Managed Packages via Syft SBOM + Trivy / Grype

@@ -69,6 +69,12 @@ FUSE_NAMES: List[Tuple[int, str, str, Severity]] = [
         "Electron falls back to unpacked app/ directories if app.asar is renamed or bypassed.",
         Severity.MEDIUM,
     ),
+    (
+        7,
+        "GrantFileProtocolExtraPrivileges",
+        "file:// pages keep extra privileges (fetch/XHR/storage), widening impact of any local-file XSS.",
+        Severity.MEDIUM,
+    ),
 ]
 
 # Expected secure state: "0" = disabled, "1" = enabled
@@ -79,42 +85,43 @@ EXPECTED_FUSE_STATE: Dict[str, str] = {
     "EnableNodeCliInspectArguments": "0",
     "EnableEmbeddedAsarIntegrityValidation": "1",
     "OnlyLoadAppFromAsar": "1",
+    "GrantFileProtocolExtraPrivileges": "0",
 }
 
 WEBPREF_PATTERNS: List[Tuple[str, re.Pattern[str], Severity, str]] = [
     (
         "nodeIntegration Enabled",
-        re.compile(r"\bnodeIntegration\s*:\s*true\b"),
+        re.compile(r"\bnodeIntegration\s*:\s*(?:true\b|!0(?![0-9]))"),
         Severity.HIGH,
         "Renderer processes have direct access to Node.js APIs (child_process, fs), escalating XSS to RCE.",
     ),
     (
         "contextIsolation Disabled",
-        re.compile(r"\bcontextIsolation\s*:\s*false\b"),
+        re.compile(r"\bcontextIsolation\s*:\s*(?:false\b|!1(?![0-9]))"),
         Severity.HIGH,
         "Preload scripts share the global window context with untrusted web content.",
     ),
     (
         "Renderer Sandbox Disabled",
-        re.compile(r"\bsandbox\s*:\s*false\b"),
+        re.compile(r"\bsandbox\s*:\s*(?:false\b|!1(?![0-9]))"),
         Severity.MEDIUM,
         "Chromium OS-level renderer sandboxing is explicitly disabled.",
     ),
     (
         "webSecurity (Same-Origin Policy) Disabled",
-        re.compile(r"\bwebSecurity\s*:\s*false\b"),
+        re.compile(r"\bwebSecurity\s*:\s*(?:false\b|!1(?![0-9]))"),
         Severity.HIGH,
         "Disables Same-Origin Policy and allows mixed-content loading.",
     ),
     (
         "allowRunningInsecureContent Enabled",
-        re.compile(r"\ballowRunningInsecureContent\s*:\s*true\b"),
+        re.compile(r"\ballowRunningInsecureContent\s*:\s*(?:true\b|!0(?![0-9]))"),
         Severity.MEDIUM,
         "Allows HTTPS pages to load scripts and stylesheets over plaintext HTTP.",
     ),
     (
         "webviewTag Enabled or <webview> Embedded",
-        re.compile(r"(?:\bwebviewTag\s*:\s*true\b|<webview\b)", re.IGNORECASE),
+        re.compile(r"(?:\bwebviewTag\s*:\s*(?:true\b|!0(?![0-9]))|<webview\b)", re.IGNORECASE),
         Severity.MEDIUM,
         "<webview> tags run outside standard frame isolation and require strict navigation guards.",
     ),
@@ -199,7 +206,7 @@ def _inspect_electron_fuses(exe_path: Path) -> Optional[Dict[str, Any]]:
     }
 
 
-def _read_asar_text_files(asar_path: Path, max_files: int = 250) -> List[Tuple[str, str]]:
+def _read_asar_text_files(asar_path: Path, max_files: int = 2000) -> List[Tuple[str, str]]:
     """
     Pure-Python ASAR archive reader (Chromium Pickle header + JSON file table)
     extracting .js, .mjs, .cjs, .html, and package.json files without external CLI tools.
@@ -224,6 +231,8 @@ def _read_asar_text_files(asar_path: Path, max_files: int = 250) -> List[Tuple[s
                     return
                 files_map = node.get("files", {})
                 for name, meta in files_map.items():
+                    if name == "node_modules":
+                        continue  # vendor code must not consume the file budget meant for first-party sources
                     rel = f"{prefix}/{name}" if prefix else name
                     if "files" in meta:
                         _walk(meta, rel)

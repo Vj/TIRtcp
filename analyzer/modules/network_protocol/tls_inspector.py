@@ -13,10 +13,12 @@ import shutil
 import socket
 import ssl
 import subprocess
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from analyzer.core.compliance_loader import ComplianceMapper
+from analyzer.core.scope import NetworkScope
 from analyzer.core.schema import (
     Confidence,
     Finding,
@@ -24,6 +26,8 @@ from analyzer.core.schema import (
     PlaybookRef,
     Severity,
 )
+
+
 
 CONFIG_EXTS = {".config", ".xml", ".json", ".yaml", ".yml", ".ini", ".properties", ".conf", ".cfg"}
 ENDPOINT_REGEX = re.compile(
@@ -65,23 +69,39 @@ def discover_endpoints_from_configs(target_path: Path) -> Set[Tuple[str, int]]:
     return endpoints
 
 
-def _probe_tls_version(host: str, port: int, tls_ver: ssl.TLSVersion, timeout: float = 5.0) -> bool:
-    """Return True if the remote TCP endpoint accepts a handshake at the specified TLS version."""
+_LOCAL_REFUSAL_MARKERS = ("UNSUPPORTED_PROTOCOL", "NO_PROTOCOLS_AVAILABLE", "NO_CIPHERS_AVAILABLE", "UNKNOWN_PROTOCOL")
+
+
+def _probe_tls_version(host: str, port: int, tls_ver: ssl.TLSVersion, timeout: float = 5.0) -> Optional[bool]:
+    """Tri-state legacy-protocol probe.
+
+    True  = server completed a handshake at that version
+    False = server explicitly refused it (TLS alert / protocol error)
+    None  = INCONCLUSIVE (local OpenSSL cannot offer it, network error, timeout). The old boolean version
+            returned False here, so a modern analyst workstation produced a bogus 'rejected TLS 1.0/1.1' pass."""
     ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
     try:
+        ctx.set_ciphers("ALL:@SECLEVEL=0")   # OpenSSL 3 / distro defaults refuse legacy suites at SECLEVEL>=1
         ctx.minimum_version = tls_ver
         ctx.maximum_version = tls_ver
-    except (ValueError, AttributeError):
-        return False
+    except (ValueError, AttributeError, ssl.SSLError):
+        return None
 
     try:
         with socket.create_connection((host, port), timeout=timeout) as raw_sock:
             with ctx.wrap_socket(raw_sock, server_hostname=host):
                 return True
-    except Exception:
-        return False
+    except ssl.SSLError as exc:
+        msg = str(exc).upper()
+        if any(m in msg for m in _LOCAL_REFUSAL_MARKERS):
+            return None
+        if "ALERT" in msg or "WRONG_VERSION" in msg or "UNEXPECTED_EOF" in msg or "HANDSHAKE_FAILURE" in msg:
+            return False
+        return None
+    except (OSError, socket.timeout):
+        return None
 
 
 def _inspect_endpoint_native(host: str, port: int, timeout: float = 6.0) -> Dict[str, Any]:
@@ -98,8 +118,17 @@ def _inspect_endpoint_native(host: str, port: int, timeout: float = 6.0) -> Dict
         "cert_issuer": None,
         "cert_not_after": None,
         "deprecated_protocols_accepted": [],
+        "deprecated_protocols_untested": [],
     }
 
+    not_after_str = cert.get("notAfter")
+    if not_after_str:
+        try:
+            exp_ts = ssl.cert_time_to_seconds(not_after_str)
+            days_remaining = int((exp_ts - time.time()) / 86400)
+            result["cert_days_remaining"] = days_remaining
+        except Exception:
+            pass
     # 1. Strict Certificate & Modern TLS Verification
     strict_ctx = ssl.create_default_context()
     try:
@@ -136,10 +165,12 @@ def _inspect_endpoint_native(host: str, port: int, timeout: float = 6.0) -> Dict
 
     # 3. Probe Deprecated TLS 1.0 and TLS 1.1 Support
     if hasattr(ssl, "TLSVersion"):
-        if _probe_tls_version(host, port, ssl.TLSVersion.TLSv1, timeout=timeout):
-            result["deprecated_protocols_accepted"].append("TLSv1.0")
-        if _probe_tls_version(host, port, ssl.TLSVersion.TLSv1_1, timeout=timeout):
-            result["deprecated_protocols_accepted"].append("TLSv1.1")
+        for label, ver in (("TLSv1.0", ssl.TLSVersion.TLSv1), ("TLSv1.1", ssl.TLSVersion.TLSv1_1)):
+            outcome = _probe_tls_version(host, port, ver, timeout=timeout)
+            if outcome is True:
+                result["deprecated_protocols_accepted"].append(label)
+            elif outcome is None:
+                result["deprecated_protocols_untested"].append(label)
 
     return result
 
@@ -163,52 +194,55 @@ def _run_testssl_if_available(host: str, port: int) -> Optional[Dict[str, Any]]:
         pass
     return None
 
-
 def inspect_tls_endpoints(
     target_path: Optional[Path],
     mapper: ComplianceMapper,
     explicit_endpoints: Optional[List[str]] = None,
+    scope: Optional[NetworkScope] = None,
 ) -> List[Finding]:
-    """
-    Inspect non-HTTP / thick-client backend TLS endpoints for deprecated TLS (<1.2),
-    weak ciphers, and invalid certificates.
-    """
     check_id = "TCP-NET-001"
     compliance_refs = mapper.resolve(check_id)
     findings: List[Finding] = []
 
-    endpoints: Set[Tuple[str, int]] = set()
+    discovered: Set[Tuple[str, int]] = set()
     if target_path and target_path.exists():
-        endpoints.update(discover_endpoints_from_configs(target_path))
+        discovered.update(discover_endpoints_from_configs(target_path))
 
+    explicit_set: Set[Tuple[str, int]] = set()
     for ep in explicit_endpoints or []:
         if ":" in ep:
             h, p_str = ep.rsplit(":", 1)
             if p_str.isdigit():
-                endpoints.add((h.strip(), int(p_str)))
+                explicit_set.add((h.strip(), int(p_str)))
 
-    if not endpoints:
+    all_endpoints = sorted(discovered | explicit_set)
+    if not all_endpoints:
         return findings
 
-    for host, port in sorted(endpoints):
+    for host, port in all_endpoints:
         asset = f"{host}:{port}"
-        probe = _inspect_endpoint_native(host, port)
+        is_explicit = (host, port) in explicit_set
 
-        if not probe["tls_supported"]:
+        # Default-deny discovered config endpoints unless explicitly allow-listed in --scope-file
+        if not is_explicit and (scope is None or not scope.is_allowed(host)):
             findings.append(
                 Finding(
                     check_id=check_id,
-                    title=f"Backend Endpoint Unreachable or Non-TLS ({asset})",
+                    title=f"Discovered Endpoint Skipped (Outside Active Probe Scope): {asset}",
                     category="Network & Transport",
-                    status=FindingStatus.TOOLING_GAP,
+                    status=FindingStatus.MANUAL_REQUIRED,
                     severity=Severity.INFO,
-                    confidence=Confidence.LOW,
+                    confidence=Confidence.HIGH,
                     affected_asset=asset,
                     summary=(
-                        f"Could not establish a TLS handshake with {asset}. The port may be "
-                        "firewalled, internal-only, or using a plaintext TCP protocol."
+                        f"Endpoint {asset} was extracted from configuration files but was not actively "
+                        "probed because it is not listed in '--scope-file'."
                     ),
-                    evidence=probe,
+                    evidence={
+                        "endpoint": asset,
+                        "scope_file_configured": bool(scope and scope.configured),
+                    },
+                    remediation="Add approved target hosts/CIDRs to --scope-file or pass via --endpoints to probe.",
                     compliance_support=compliance_refs,
                 )
             )
@@ -282,7 +316,24 @@ def inspect_tls_endpoints(
                 )
             )
 
-        if not issues_found:
+        untested = probe.get("deprecated_protocols_untested") or []
+        if untested and not deprecated:
+            findings.append(
+                Finding(
+                    check_id=check_id,
+                    title=f"Legacy TLS Probe Inconclusive ({', '.join(untested)}) on {asset}",
+                    category="Network & Transport",
+                    status=FindingStatus.TOOLING_GAP,
+                    severity=Severity.INFO,
+                    confidence=Confidence.LOW,
+                    affected_asset=asset,
+                    summary="Could not determine whether legacy TLS is accepted (local stack refused or network error). Re-run with testssl.sh/sslyze.",
+                    evidence=probe,
+                    compliance_support=compliance_refs,
+                )
+            )
+
+        if not issues_found and not untested:
             findings.append(
                 Finding(
                     check_id=check_id,

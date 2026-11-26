@@ -1,0 +1,51 @@
+name: TIRtcp Regression & Self-Test CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.11", "3.13"]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[network,dev]"
+
+      - name: Run unified pytest suite
+        run: pytest -v tests/test_tirtcp.py
+
+      - name: Run end-to-end synthetic demo self-test
+        shell: bash
+        run: |
+          python scripts/create_demo_target.py --out .demo_ci
+          python -m analyzer.tirtcp \
+            --target .demo_ci/DemoClient \
+            --evidence .demo_ci/host_evidence.json \
+            --pcap .demo_ci/capture.pcap \
+            --procmon-csv .demo_ci/procmon.csv \
+            --memory-dump .demo_ci/post_logout.dmp \
+            --canary-markers "CanaryPass#2026" \
+            --authorized \
+            --engagement-id ENG-CI-001 \
+            --no-active-probe \
+            --compliance-map config/compliance_map.yaml \
+            --output .demo_ci/reports
+          python scripts/triage_findings.py .demo_ci/reports/tirtcp_DemoClient.json --worklist-out .demo_ci/worklist.md

@@ -29,7 +29,7 @@ from analyzer.core.schema import (
 
 # Chunked reading size (16 MB) with 1 KB overlap so strings spanning chunk boundaries are not missed
 CHUNK_SIZE = 16 * 1024 * 1024
-OVERLAP_BYTES = 1024
+OVERLAP_BYTES = 4096
 
 # Generic token/header patterns (used only when canary markers are not provided or in addition to them)
 BEARER_HEADER_RE = re.compile(rb"Authorization:\s*Bearer\s+[A-Za-z0-9._-]{20,}", re.IGNORECASE)
@@ -74,17 +74,18 @@ def _scan_dump_for_canaries(
                 break
             bytes_scanned += len(chunk)
             window = tail + chunk
-            # Avoid double-counting matches inside the overlap region
-            search_region = window if not tail else window[OVERLAP_BYTES // 2 :]
-
+            tl = len(tail)
+            # Count only matches that END inside the new chunk; anything fully inside the carried tail was
+            # already counted on the previous pass (the old half-overlap logic double-counted these and
+            # could inflate the retention confidence rating).
             for fp, encodings in encoded_targets.items():
-                canary_counts[fp]["ascii_hits"] += search_region.count(encodings["ascii"])
-                canary_counts[fp]["utf16le_hits"] += search_region.count(encodings["utf16le"])
+                for key, needle in (("ascii_hits", encodings["ascii"]), ("utf16le_hits", encodings["utf16le"])):
+                    canary_counts[fp][key] += window.count(needle, max(tl - (len(needle) - 1), 0))
 
-            bearer_hits += len(BEARER_HEADER_RE.findall(search_region))
-            jwt_hits += len(JWT_TOKEN_RE.findall(search_region))
+            bearer_hits += sum(1 for m in BEARER_HEADER_RE.finditer(window) if m.end() > tl)
+            jwt_hits += sum(1 for m in JWT_TOKEN_RE.finditer(window) if m.end() > tl)
 
-            tail = chunk[-OVERLAP_BYTES:] if len(chunk) >= OVERLAP_BYTES else chunk
+            tail = window[-OVERLAP_BYTES:]
 
     matched_canaries = {
         fp: counts

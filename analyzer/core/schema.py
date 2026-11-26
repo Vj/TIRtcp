@@ -4,6 +4,8 @@ TIRtcp Canonical Finding Schema & Multi-Format Exporter (JSON, SARIF v2.1.0, HTM
 
 from __future__ import annotations
 
+import hashlib
+import re
 import html
 import json
 from dataclasses import asdict, dataclass, field
@@ -16,6 +18,7 @@ from typing import Any, Dict, List, Optional
 class FindingStatus(str, Enum):
     FAIL = "Fail"
     VERIFIED_PASS = "Verified Pass"
+    NOT_ASSESSED = "Not Assessed"                    # Partial coverage / files skipped / tool failed
     EVIDENCE_OF_RETENTION = "Evidence of Retention"  # Used for noisy runtime/memory artifacts
     TOOLING_GAP = "Tooling Gap"                      # External binary/permission unavailable
     MANUAL_REQUIRED = "Manual Required"              # Requires human GUI/playbook verification
@@ -84,6 +87,28 @@ class Finding:
     timestamp_utc: str = field(
         default_factory=lambda: datetime.now(timezone.utc).isoformat()
     )
+    grouped_assets: List[str] = field(default_factory=list)
+    timestamp_utc: str = field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+    )
+
+    @property
+    def fingerprint(self) -> str:
+        """Stable SHA-256 fingerprint matching scripts/triage_findings.py and SARIF partialFingerprints."""
+        norm_asset = re.sub(r"[A-Za-z]:\\|/", "|", self.affected_asset).lower()
+        raw = f"{self.check_id}|{self.title}|{norm_asset}".encode("utf-8")
+        return hashlib.sha256(raw).hexdigest()[:16]
+
+    def to_dict(self) -> Dict[str, Any]:
+        raw = asdict(self)
+        raw["fingerprint"] = self.fingerprint
+        raw["status"] = self.status.value
+        raw["severity"] = self.severity.value
+        raw["confidence"] = self.confidence.value
+        for c in raw["compliance_support"]:
+            if isinstance(c["relation"], Enum):
+                c["relation"] = c["relation"].value
+        return raw
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize finding into a clean dictionary with Enum values resolved."""
@@ -191,20 +216,26 @@ class ScanReport:
                 {
                     "ruleId": f.check_id,
                     "level": level,
+                    "partialFingerprints": {
+                        "primaryLocationLineHash": f.fingerprint,
+                    },
                     "message": {
                         "text": f"[{f.status.value} | Confidence: {f.confidence.value}] {f.summary}"
                     },
                     "locations": [
                         {
                             "physicalLocation": {
-                                "artifactLocation": {"uri": f.affected_asset}
+                                "artifactLocation": {"uri": f.affected_asset.replace("\\", "/")
+                                                     }
                             }
                         }
                     ],
                     "properties": {
+                        "fingerprint": f.fingerprint,
                         "status": f.status.value,
                         "severity": f.severity.value,
                         "confidence": f.confidence.value,
+                        "grouped_assets": f.grouped_assets,
                         "evidence": f.evidence,
                     },
                 }
@@ -239,6 +270,44 @@ class ScanReport:
             ],
         }
         return json.dumps(sarif_doc, indent=2)
+
+# -------------------------------------------------------------------------
+    def deduplicate_findings(self) -> None:
+        """
+        Group repeated findings with identical (check_id, title, status) into a single
+        consolidated finding with an aggregated grouped_assets list so large installs
+        do not generate hundreds of duplicate cards.
+        """
+        sev_rank = {
+            Severity.INFO: 0,
+            Severity.LOW: 1,
+            Severity.MEDIUM: 2,
+            Severity.HIGH: 3,
+            Severity.CRITICAL: 4,
+        }
+        grouped: Dict[tuple[str, str, str], Finding] = {}
+        order: List[tuple[str, str, str]] = []
+
+        for f in self.findings:
+            key = (f.check_id, f.title, f.status.value)
+            if key not in grouped:
+                if f.affected_asset and f.affected_asset not in f.grouped_assets:
+                    f.grouped_assets.append(f.affected_asset)
+                grouped[key] = f
+                order.append(key)
+            else:
+                existing = grouped[key]
+                if f.affected_asset and f.affected_asset not in existing.grouped_assets:
+                    existing.grouped_assets.append(f.affected_asset)
+                if sev_rank[f.severity] > sev_rank[existing.severity]:
+                    existing.severity = f.severity
+                existing.affected_asset = (
+                    f"{existing.grouped_assets[0]} (+{len(existing.grouped_assets) - 1} more)"
+                )
+                existing.evidence["grouped_asset_count"] = len(existing.grouped_assets)
+                existing.evidence["grouped_assets"] = existing.grouped_assets[:50]
+
+        self.findings = [grouped[k] for k in order]
 
     # -------------------------------------------------------------------------
     # 3. Single-Format Standalone HTML Projection

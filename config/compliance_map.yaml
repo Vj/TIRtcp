@@ -313,3 +313,94 @@ checks:
         control_title: "No Post-Authentication Retention of Sensitive Authentication Data"
         relation: "supports"
         scope: "bfsi"
+
+metadata:
+  schema_version: "1.0.0"
+  last_verified: "2026-11-25"
+  notes: >
+    Branch-aware baseline definitions for native C/C++ libraries and Electron runtimes.
+    Update via scripts/update_baselines.py or manual vendor advisory review.
+
+native_libraries:
+  OpenSSL:
+    pattern: '\bOpenSSL\s+([0-9]+\.[0-9]+\.[0-9]+[a-z]?)\b'
+    severity: "High"
+    advisory: "Legacy or unpatched OpenSSL branches expose thick clients to TLS downgrade, X.509 verification, and memory-safety CVEs."
+    branches:
+      - prefix: "1.0."
+        status: "eol"
+        min_safe: "1.0.2zk"
+      - prefix: "1.1."
+        status: "eol"
+        min_safe: "1.1.1w"
+      - prefix: "3.0."
+        status: "lts"
+        min_safe: "3.0.15"
+      - prefix: "3.1."
+        status: "eol"
+        min_safe: "3.1.7"
+      - prefix: "3.2."
+        status: "supported"
+        min_safe: "3.2.3"
+      - prefix: "3.3."
+        status: "supported"
+        min_safe: "3.3.2"
+      - prefix: "3.4."
+        status: "supported"
+        min_safe: "3.4.0"
+
+  libcurl:
+    pattern: '\blibcurl/([0-9]+\.[0-9]+\.[0-9]+)\b'
+    severity: "High"
+    advisory: "Outdated libcurl releases are affected by SOCKS5 heap overflow (CVE-2023-38545) and HTTP/2 framing vulnerabilities."
+    branches:
+      - prefix: "7."
+        status: "eol"
+        min_safe: "8.10.0"
+      - prefix: "8."
+        status: "supported"
+        min_safe: "8.10.0"
+
+  zlib:
+    pattern: '\b(?:inflate|deflate)\s+([0-9]+\.[0-9]+\.[0-9]+)\s+Copyright 1995-'
+    severity: "Medium"
+    advisory: "zlib versions prior to 1.3.1 are affected by inflate/deflate memory corruption issues (e.g., CVE-2022-37434)."
+    branches:
+      - prefix: "1.2."
+        status: "eol"
+        min_safe: "1.3.1"
+      - prefix: "1.3."
+        status: "supported"
+        min_safe: "1.3.1"
+
+  SQLite:
+    pattern: '\bSQLite\s+(?:version\s+)?(3\.[0-9]+\.[0-9]+)\b'
+    severity: "Medium"
+    advisory: "Outdated embedded SQLite engines expose local client databases to memory safety and FTS5 vulnerabilities."
+    branches:
+      - prefix: "3."
+        status: "supported"
+        min_safe: "3.46.0"
+
+  libexpat:
+    pattern: '\bexpat_([0-9]+\.[0-9]+\.[0-9]+)\b'
+    severity: "Medium"
+    advisory: "Older libexpat XML parsers suffer from integer overflow and billion-laughs DoS flaws."
+    branches:
+      - prefix: "2."
+        status: "supported"
+        min_safe: "2.6.3"
+
+  libssh2:
+    pattern: '\blibssh2/([0-9]+\.[0-9]+\.[0-9]+)\b'
+    severity: "Medium"
+    advisory: "Legacy libssh2 builds are vulnerable to out-of-bounds read and key-exchange flaws."
+    branches:
+      - prefix: "1."
+        status: "supported"
+        min_safe: "1.11.0"
+
+electron:
+  min_supported_major: 31
+  supported_majors: [31, 32, 33]
+  advisory: "Unsupported Electron versions bundle end-of-life Chromium/V8 engines with publicly known renderer sandbox escapes."

@@ -81,9 +81,9 @@ TLS Probing: testssl.sh (supplements built-in Python TLS 1.0/1.1, cipher, and ce
 
 Building the Portable Windows Collector (tirtcp-collector.exe)
 When assessing locked-down client VDIs/workstations where Python cannot be installed, package collector/collect_host.py (which uses only the Python standard library) into a standalone executable:
-
+XXXXX
     pyinstaller --onefile --name tirtcp-collector collector/collect_host.py
-
+XXXXXX
 3. Standard Operating Procedure (SOP) for Engagements
 Step 1: Collect Read-Only Host Evidence (On Target Windows Machine)
 Run the portable collector under the target user context (and optionally as Administrator to inspect restricted service keys):

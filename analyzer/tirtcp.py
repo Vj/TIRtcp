@@ -31,7 +31,11 @@ import sys
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
+from yaml import parser
+
 from analyzer.core.compliance_loader import ComplianceMapper
+from analyzer.core.context import ScanContext
+from analyzer.core.scope import NetworkScope
 from analyzer.core.schema import (
     Confidence,
     Finding,
@@ -92,7 +96,17 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Explicit authorization flag required to unlock Phase 4 runtime/memory modules.",
     )
-
+    parser.add_argument(
+        "--scope-file",
+        type=Path,
+        default=None,
+        help="Allow-list file of approved hostnames, wildcard domains, or CIDRs for active TLS probing.",
+    )
+    parser.add_argument(
+        "--no-group",
+        action="store_true",
+        help="Disable finding deduplication/grouping (emit one card per file/occurrence).",
+    )
     # Phase 2: Network & Protocol Inputs
     parser.add_argument(
         "--pcap",
@@ -133,6 +147,25 @@ def parse_args() -> argparse.Namespace:
         nargs="*",
         default=[],
         help="Synthetic QA credentials/tokens used during test login to verify post-logout memory zeroization.",
+    )
+
+    # Governance / automation switches
+    parser.add_argument(
+        "--live-host",
+        action="store_true",
+        help="Target path is the real installation on THIS host, so local ACLs are meaningful. Without it (or "
+        "--evidence) ACL checks are skipped: ACLs of a copied folder say nothing about the assessed machine.",
+    )
+    parser.add_argument(
+        "--no-active-probe",
+        action="store_true",
+        help="Do not open network connections (skips TLS probing of discovered/explicit endpoints).",
+    )
+    parser.add_argument(
+        "--fail-on",
+        choices=["none", "low", "medium", "high", "critical"],
+        default="none",
+        help="CI gate: exit with code 2 if any Fail/Retention finding is at or above this severity.",
     )
 
     # Configuration & Output Paths
@@ -233,7 +266,9 @@ def main() -> int:
     print(f"Engagement ID      : {args.engagement_id}")
     print(f"Runtime Auth Gate  : {'UNLOCKED (--authorized)' if args.authorized else 'LOCKED (Offline/Static Only)'}")
     print("=" * 72)
-
+    scan_ctx = ScanContext(args.target)
+    net_scope = NetworkScope(args.scope_file)
+    print(f"Target Inventory   : {len(scan_ctx.files)} file(s) indexed")
     # -------------------------------------------------------------------------
     # PHASE 1: Static Binary, Signatures, Secrets/DB/Logs, Hybrid SCA & ACLs
     # -------------------------------------------------------------------------
@@ -266,25 +301,68 @@ def main() -> int:
         lambda: scan_dependencies_and_native_libs(args.target, mapper),
         report,
     )
-    _run_stage(
-        "Filesystem & auto-update directory ACL audit",
-        "TCP-HOST-001",
-        str(args.target),
-        lambda: scan_filesystem_acls(args.target, mapper, host_evidence=host_evidence),
-        report,
-    )
+    if host_evidence is not None or args.live_host:
+        _run_stage(
+            "Filesystem & auto-update directory ACL audit",
+            "TCP-HOST-001",
+            str(args.target),
+            lambda: scan_filesystem_acls(args.target if args.live_host else None, mapper, host_evidence=host_evidence),
+            report,
+        )
+    else:
+        report.add_finding(
+            Finding(
+                check_id="TCP-HOST-001",
+                title="Filesystem ACL Audit Skipped (No Host Evidence and Not --live-host)",
+                category="Host & Filesystem ACLs",
+                status=FindingStatus.TOOLING_GAP,
+                severity=Severity.INFO,
+                confidence=Confidence.HIGH,
+                affected_asset=str(args.target),
+                summary="ACLs of an offline copy do not reflect the assessed host. Provide --evidence from the collector or run with --live-host on the target.",
+                evidence={"evidence_supplied": False, "live_host": False},
+            )
+        )
 
     # -------------------------------------------------------------------------
     # PHASE 2: Non-HTTP TLS & Offline PCAP Wire-Protocol Inspection
     # -------------------------------------------------------------------------
     print("\n[Phase 2] Network Transport & Wire-Protocol Analysis")
-    _run_stage(
-        "Non-HTTP TLS version, cipher & certificate inspection",
-        "TCP-NET-001",
-        str(args.target),
-        lambda: inspect_tls_endpoints(args.target, mapper, explicit_endpoints=args.endpoints),
-        report,
+    pcap_endpoints: set[tuple[str, int]] = set()
+
+    if args.pcap is not None:
+        _run_stage(
+            f"Offline PCAP/PCAPNG wire-protocol & SNI extraction ({args.pcap.name})",
+            "TCP-NET-001",
+            str(args.pcap),
+            lambda: analyze_pcap_capture(args.pcap, mapper, discovered_endpoints_out=pcap_endpoints),
+            report,
     )
+
+    if not args.no_active_probe:
+        _run_stage(
+            "Scope-gated TLS version, cipher & certificate inspection",
+            "TCP-NET-001",
+            str(args.target),
+            lambda: inspect_tls_endpoints(
+                args.target,
+                mapper,
+                explicit_endpoints=args.endpoints,
+                extra_discovered_endpoints=pcap_endpoints,
+                scope=net_scope,
+            ),
+            report,
+    )
+    if not args.no_active_probe:
+        _run_stage(
+            "Non-HTTP TLS version, cipher & certificate inspection",
+            "TCP-NET-001",
+            str(args.target),
+            lambda: inspect_tls_endpoints(args.target, mapper, explicit_endpoints=args.endpoints, scope=net_scope),
+            report,
+        )
+    else:
+        print("  -> TLS probing skipped (--no-active-probe)")
     if args.pcap is not None:
         _run_stage(
             f"Offline PCAP wire-protocol & cleartext capture audit ({args.pcap.name})",
@@ -356,6 +434,8 @@ def main() -> int:
     # -------------------------------------------------------------------------
     # Report Export & Executive Summary
     # -------------------------------------------------------------------------
+    if not args.no_group:
+        report.deduplicate_findings()
     safe_stem = "".join(c if c.isalnum() or c in ("-", "_") else "_" for c in args.target.stem)
     written = report.write_outputs(args.output, base_name=f"tirtcp_{safe_stem}")
     counts = report.summary_counts()
@@ -383,6 +463,13 @@ def main() -> int:
     print(f"SARIF v2.1.0       : {written['sarif'].resolve()}")
     print("=" * 72)
 
+    if args.fail_on != "none":
+        order = ["info", "low", "medium", "high", "critical"]
+        gate = order.index(args.fail_on)
+        for f in report.findings:
+            if f.status in (FindingStatus.FAIL, FindingStatus.EVIDENCE_OF_RETENTION) and order.index(f.severity.value.lower()) >= gate:
+                print(f"[!] CI gate: finding at/above '{args.fail_on}' present -> exit 2", file=sys.stderr)
+                return 2
     return 0
 
 

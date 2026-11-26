@@ -1,11 +1,7 @@
 """
 TIRtcp Host & Offline Audit Module: IPC, Named Pipes, COM/DCOM, Scheduled Tasks & URI Handlers
-Evaluates offline host_evidence.json sections:
-- custom_uri_handlers (unquoted %1 argument passing & handler exposure)
-- named_pipes (application IPC endpoints requiring DACL / impersonation review)
-- com_dcom_appids (custom LaunchPermission/AccessPermission & RunAs elevation context)
-- scheduled_tasks (non-OS tasks executing under NT AUTHORITY\\SYSTEM)
-Maps to check_id: TCP-IPC-001 (with fallback compliance refs if not in compliance_map.yaml)
+Integrates analyzer.core.sddl.classify() to turn SDDL-backed Pipe and COM/DCOM checks into
+automated Pass/Fail verdicts.
 """
 
 from __future__ import annotations
@@ -13,6 +9,7 @@ from __future__ import annotations
 from typing import Any, Dict, List
 
 from analyzer.core.compliance_loader import ComplianceMapper
+from analyzer.core.sddl import classify as classify_sddl
 from analyzer.core.schema import (
     ComplianceRef,
     ComplianceRelation,
@@ -55,7 +52,6 @@ def _audit_custom_uri_handlers(
     findings: List[Finding] = []
     for item in handlers:
         scheme = item.get("scheme", "unknown")
-        command = item.get("command", "")
         unquoted = bool(item.get("unquoted_url_argument", False))
 
         if unquoted:
@@ -69,14 +65,11 @@ def _audit_custom_uri_handlers(
                     confidence=Confidence.HIGH,
                     affected_asset=f"HKLM\\SOFTWARE\\Classes\\{scheme}\\shell\\open\\command",
                     summary=(
-                        f"Registered URI protocol '{scheme}://' invokes its target executable with an "
-                        "unquoted %1 parameter, enabling argument injection when invoked via browsers or external apps."
+                        f"Registered URI protocol '{scheme}://' invokes its executable with an unquoted %1 "
+                        "parameter, enabling argument injection via browsers or external applications."
                     ),
                     evidence=item,
-                    remediation=(
-                        f'Enclose the %1 placeholder in double quotes inside the registry command '
-                        f'(e.g., "C:\\Path\\To\\App.exe" "%1") and strictly validate/parse URI arguments inside the client.'
-                    ),
+                    remediation=f'Enclose %1 in double quotes (e.g., "C:\\Path\\To\\App.exe" "%1") and validate URI parameters.',
                     compliance_support=compliance_refs,
                 )
             )
@@ -90,21 +83,9 @@ def _audit_custom_uri_handlers(
                     severity=Severity.LOW,
                     confidence=Confidence.HIGH,
                     affected_asset=f"HKLM\\SOFTWARE\\Classes\\{scheme}",
-                    summary=(
-                        f"Application registers custom URI scheme '{scheme}://'. While %1 is quoted, "
-                        "the handler logic must be reviewed for unsafe parameter handling or state-changing actions without user confirmation."
-                    ),
+                    summary=f"Application registers custom URI scheme '{scheme}://' with quoted %1; review handler logic for unsafe actions.",
                     evidence=item,
-                    remediation="Ensure custom URI handlers enforce strict input validation and require user confirmation for privileged actions.",
                     compliance_support=compliance_refs,
-                    manual_playbook=PlaybookRef(
-                        tool="API Monitor / Source Review",
-                        objective=f"Verify how '{scheme}://' URI arguments are parsed and sanitized on application startup.",
-                        steps=[
-                            "Inspect the command-line argument parser in the client entry point (Main / WinMain).",
-                            "Confirm that unknown flags or unexpected URI paths are rejected before triggering sensitive workflows.",
-                        ],
-                    ),
                 )
             )
     return findings
@@ -114,39 +95,82 @@ def _audit_named_pipes(
     pipes: List[Dict[str, Any]],
     compliance_refs: List[ComplianceRef],
 ) -> List[Finding]:
-    if not pipes:
-        return []
+    findings: List[Finding] = []
+    unclassified_pipes: List[Dict[str, Any]] = []
+    verified_pipes = 0
 
-    pipe_names = [p.get("full_path", p.get("pipe_name", "")) for p in pipes]
-    return [
-        Finding(
-            check_id="TCP-IPC-001",
-            title=f"Application Named Pipes Detected ({len(pipes)} Active IPC Endpoint(s))",
-            category="IPC & Protocol Handlers",
-            status=FindingStatus.MANUAL_REQUIRED,
-            severity=Severity.MEDIUM,
-            confidence=Confidence.HIGH,
-            affected_asset=", ".join(pipe_names[:5]),
-            summary=(
-                "Application exposes Windows Named Pipe(s) for local IPC. Overly permissive pipe DACLs "
-                "(e.g., Everyone or Authenticated Users with write access) can allow unauthorized local command injection."
-            ),
-            evidence={"named_pipes": pipes[:25]},
-            remediation=(
-                "Initialize Named Pipes with explicit SECURITY_ATTRIBUTES restricting read/write access "
-                "to the current user SID or Administrators, and reject client impersonation unless strictly required."
-            ),
-            compliance_support=compliance_refs,
-            manual_playbook=PlaybookRef(
-                tool="AccessChk / Sysinternals Pipelist",
-                objective="Verify DACLs on each discovered application Named Pipe.",
-                steps=[
-                    "Run `accesschk.exe -v \\\\.\\pipe\\<pipe_name>` on an authorized test system.",
-                    "Confirm that 'Everyone' and 'BUILTIN\\Users' do not hold FILE_WRITE_DATA or GENERIC_ALL rights on privileged service pipes.",
-                ],
-            ),
+    for p in pipes:
+        full_path = p.get("full_path", p.get("pipe_name", "Unknown Pipe"))
+        sddl = p.get("sddl")
+
+        if sddl:
+            verdict = classify_sddl(sddl)
+            if verdict["risky"] or verdict["has_null_dacl"]:
+                findings.append(
+                    Finding(
+                        check_id="TCP-IPC-001",
+                        title=f"Permissive Named Pipe DACL Allows Low-Privileged Write ({full_path})",
+                        category="IPC & Protocol Handlers",
+                        status=FindingStatus.FAIL,
+                        severity=Severity.HIGH,
+                        confidence=Confidence.HIGH,
+                        affected_asset=full_path,
+                        summary=(
+                            f"Named Pipe '{full_path}' grants write/generic rights to low-privileged principals "
+                            "or uses a NULL DACL, allowing unauthorized local command injection."
+                        ),
+                        evidence={"pipe": full_path, "sddl": sddl, "sddl_analysis": verdict},
+                        remediation="Initialize Named Pipes with explicit SECURITY_ATTRIBUTES restricting access to the current user SID or Administrators.",
+                        compliance_support=compliance_refs,
+                    )
+                )
+            else:
+                verified_pipes += 1
+        else:
+            unclassified_pipes.append(p)
+
+    if verified_pipes > 0 and not findings and not unclassified_pipes:
+        findings.append(
+            Finding(
+                check_id="TCP-IPC-001",
+                title=f"Restrictive Named Pipe DACLs Verified via SDDL ({verified_pipes} Pipe(s))",
+                category="IPC & Protocol Handlers",
+                status=FindingStatus.VERIFIED_PASS,
+                severity=Severity.INFO,
+                confidence=Confidence.HIGH,
+                affected_asset=", ".join(p.get("full_path", "") for p in pipes[:5]),
+                summary=f"Evaluated SDDL security descriptors for {verified_pipes} Named Pipe(s); no low-privileged write ACEs detected.",
+                evidence={"verified_pipe_count": verified_pipes},
+                compliance_support=compliance_refs,
+            )
         )
-    ]
+
+    if unclassified_pipes:
+        pipe_names = [p.get("full_path", p.get("pipe_name", "")) for p in unclassified_pipes]
+        findings.append(
+            Finding(
+                check_id="TCP-IPC-001",
+                title=f"Named Pipes Without SDDL Metadata ({len(unclassified_pipes)} Endpoint(s))",
+                category="IPC & Protocol Handlers",
+                status=FindingStatus.MANUAL_REQUIRED,
+                severity=Severity.MEDIUM,
+                confidence=Confidence.MEDIUM,
+                affected_asset=", ".join(pipe_names[:5]),
+                summary="Collector could not read DACL SDDL for these Named Pipe(s) (often due to access restrictions); verify manually.",
+                evidence={"named_pipes": unclassified_pipes[:25]},
+                manual_playbook=PlaybookRef(
+                    tool="Sysinternals AccessChk",
+                    objective="Inspect DACLs on Named Pipes whose SDDL could not be dumped.",
+                    steps=[
+                        "Run `accesschk.exe -accepteula -v \\\\.\\pipe\\<pipe_name>` on an authorized test host.",
+                        "Confirm Everyone and BUILTIN\\Users do not hold FILE_WRITE_DATA or GENERIC_ALL rights.",
+                    ],
+                ),
+                compliance_support=compliance_refs,
+            )
+        )
+
+    return findings
 
 
 def _audit_com_dcom(
@@ -158,51 +182,66 @@ def _audit_com_dcom(
         appid = entry.get("appid", "Unknown AppID")
         desc = entry.get("description") or appid
         run_as = entry.get("run_as")
-        has_custom_perms = bool(
-            entry.get("custom_launch_permission") or entry.get("custom_access_permission")
-        )
+        launch_sddl = entry.get("launch_permission_sddl")
+        access_sddl = entry.get("access_permission_sddl")
 
-        if run_as and "interactive user" not in run_as.lower():
+        risky_details: Dict[str, Any] = {}
+        if launch_sddl:
+            l_res = classify_sddl(launch_sddl)
+            if l_res["risky"] or l_res["has_null_dacl"]:
+                risky_details["launch_permission"] = l_res
+        if access_sddl:
+            a_res = classify_sddl(access_sddl)
+            if a_res["risky"] or a_res["has_null_dacl"]:
+                risky_details["access_permission"] = a_res
+
+        if risky_details:
+            is_elevated_runas = bool(run_as and "interactive user" not in run_as.lower())
             findings.append(
                 Finding(
                     check_id="TCP-IPC-001",
-                    title=f"COM/DCOM AppID Configured with Explicit RunAs Identity ({desc})",
+                    title=f"Permissive COM/DCOM Launch or Access SDDL ({desc})",
                     category="IPC & Protocol Handlers",
-                    status=FindingStatus.MANUAL_REQUIRED,
-                    severity=Severity.MEDIUM,
+                    status=FindingStatus.FAIL,
+                    severity=Severity.HIGH if is_elevated_runas else Severity.MEDIUM,
                     confidence=Confidence.HIGH,
                     affected_asset=f"HKLM\\SOFTWARE\\Classes\\AppID\\{appid}",
                     summary=(
-                        f"DCOM component '{desc}' ({appid}) is configured with RunAs='{run_as}'. "
-                        "If LaunchPermission or AccessPermission grants rights to low-privileged users, "
-                        "local privilege escalation across security boundaries may occur."
+                        f"DCOM AppID '{desc}' ({appid}) grants launch/access rights to low-privileged principals"
+                        + (f" while configured with RunAs='{run_as}'." if run_as else ".")
                     ),
-                    evidence=entry,
-                    remediation="Audit LaunchPermission and AccessPermission SDDL descriptors via dcomcnfg.exe and restrict activation to Administrators.",
+                    evidence={"entry": entry, "sddl_analysis": risky_details},
+                    remediation="Restrict DCOM LaunchPermission and AccessPermission SDDL descriptors via dcomcnfg.exe to Administrators.",
                     compliance_support=compliance_refs,
-                    manual_playbook=PlaybookRef(
-                        tool="dcomcnfg.exe / OleViewDotNet",
-                        objective=f"Inspect Launch and Access SDDL permissions for AppID {appid}.",
-                        steps=[
-                            "Open Component Services (`dcomcnfg.exe`) -> DCOM Config and locate the AppID.",
-                            "Review 'Launch and Activation Permissions' and 'Access Permissions' under the Security tab to ensure standard users cannot activate the elevated COM server.",
-                        ],
-                    ),
                 )
             )
-        elif has_custom_perms:
+        elif launch_sddl or access_sddl:
             findings.append(
                 Finding(
                     check_id="TCP-IPC-001",
-                    title=f"COM/DCOM AppID Defines Custom Launch/Access Permissions ({desc})",
+                    title=f"COM/DCOM AppID Permissions Hardened via SDDL ({desc})",
+                    category="IPC & Protocol Handlers",
+                    status=FindingStatus.VERIFIED_PASS,
+                    severity=Severity.INFO,
+                    confidence=Confidence.HIGH,
+                    affected_asset=f"HKLM\\SOFTWARE\\Classes\\AppID\\{appid}",
+                    summary=f"Evaluated Launch/Access SDDL for '{desc}'; no low-privileged ACEs detected.",
+                    evidence=entry,
+                    compliance_support=compliance_refs,
+                )
+            )
+        elif run_as and "interactive user" not in run_as.lower():
+            findings.append(
+                Finding(
+                    check_id="TCP-IPC-001",
+                    title=f"COM/DCOM AppID Uses Explicit RunAs Identity Without Custom SDDL ({desc})",
                     category="IPC & Protocol Handlers",
                     status=FindingStatus.MANUAL_REQUIRED,
-                    severity=Severity.LOW,
+                    severity=Severity.MEDIUM,
                     confidence=Confidence.MEDIUM,
                     affected_asset=f"HKLM\\SOFTWARE\\Classes\\AppID\\{appid}",
-                    summary=f"DCOM component '{desc}' overrides default system COM ACLs with custom binary SDDL descriptors.",
+                    summary=f"DCOM component '{desc}' specifies RunAs='{run_as}' and inherits default machine COM ACLs.",
                     evidence=entry,
-                    remediation="Verify custom SDDL descriptors adhere to least privilege.",
                     compliance_support=compliance_refs,
                 )
             )
@@ -228,13 +267,10 @@ def _audit_scheduled_tasks(
                     affected_asset=task.get("task_to_run", task.get("task_name", "Scheduled Task")),
                     summary=(
                         f"Scheduled task '{task.get('task_name')}' executes '{task.get('task_to_run')}' "
-                        f"under '{run_as}'. Any weak ACL on the target binary or arguments enables local privilege escalation."
+                        f"under '{run_as}'."
                     ),
                     evidence=task,
-                    remediation=(
-                        "Run scheduled tasks under a dedicated low-privileged service account or LocalService "
-                        "instead of SYSTEM, and ensure the target executable and parent directory are writable only by Administrators."
-                    ),
+                    remediation="Run scheduled tasks under a least-privilege service account and lock down target binary ACLs.",
                     compliance_support=compliance_refs,
                 )
             )
@@ -245,10 +281,6 @@ def audit_ipc_and_handlers(
     host_evidence: Dict[str, Any],
     mapper: ComplianceMapper,
 ) -> List[Finding]:
-    """
-    Evaluate offline host_evidence.json for custom URI protocol handlers, Named Pipes,
-    COM/DCOM AppID permissions, and SYSTEM scheduled tasks.
-    """
     compliance_refs = _resolve_ipc_compliance(mapper)
     findings: List[Finding] = []
 
@@ -266,16 +298,13 @@ def audit_ipc_and_handlers(
         findings.append(
             Finding(
                 check_id="TCP-IPC-001",
-                title="No Exposed Custom URI Handlers, Elevated COM AppIDs, or SYSTEM Tasks Flagged",
+                title="No Exposed Custom URI Handlers, Risky COM AppIDs, or SYSTEM Tasks Flagged",
                 category="IPC & Protocol Handlers",
                 status=FindingStatus.VERIFIED_PASS,
                 severity=Severity.INFO,
                 confidence=Confidence.HIGH,
                 affected_asset=host_evidence.get("hostname", "Offline Host Bundle"),
-                summary=(
-                    "Evaluated host_evidence.json IPC and handler sections; zero unquoted URI handlers "
-                    "or SYSTEM-privileged application tasks were flagged."
-                ),
+                summary="Evaluated host_evidence.json IPC and handler sections with zero risky configurations flagged.",
                 evidence={
                     "uri_handlers_checked": len(uri_handlers),
                     "named_pipes_checked": len(named_pipes),

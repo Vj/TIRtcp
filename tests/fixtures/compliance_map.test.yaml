@@ -1,0 +1,43 @@
+# TEST STUB ONLY - CWE cross-references so the suite can run. Use your real, versioned config/compliance_map.yaml in engagements.
+metadata:
+  last_verified: "test-stub"
+checks:
+  TCP-BIN-001:
+    mappings:
+      - {framework: CWE, version: "4.16", control_id: "CWE-693", control_title: "stub", relation: supports, scope: general}
+  TCP-BIN-002:
+    mappings:
+      - {framework: CWE, version: "4.16", control_id: "CWE-347", control_title: "stub", relation: supports, scope: general}
+  TCP-SEC-001:
+    mappings:
+      - {framework: CWE, version: "4.16", control_id: "CWE-798", control_title: "stub", relation: supports, scope: general}
+  TCP-SEC-002:
+    mappings:
+      - {framework: CWE, version: "4.16", control_id: "CWE-532", control_title: "stub", relation: supports, scope: general}
+  TCP-SCA-001:
+    mappings:
+      - {framework: CWE, version: "4.16", control_id: "CWE-1104", control_title: "stub", relation: supports, scope: general}
+  TCP-HOST-001:
+    mappings:
+      - {framework: CWE, version: "4.16", control_id: "CWE-732", control_title: "stub", relation: supports, scope: general}
+  TCP-HOST-002:
+    mappings:
+      - {framework: CWE, version: "4.16", control_id: "CWE-427", control_title: "stub", relation: supports, scope: general}
+  TCP-NET-001:
+    mappings:
+      - {framework: CWE, version: "4.16", control_id: "CWE-319", control_title: "stub", relation: supports, scope: general}
+  TCP-MGD-001:
+    mappings:
+      - {framework: CWE, version: "4.16", control_id: "CWE-502", control_title: "stub", relation: supports, scope: general}
+  TCP-MGD-002:
+    mappings:
+      - {framework: CWE, version: "4.16", control_id: "CWE-502", control_title: "stub", relation: supports, scope: general}
+  TCP-ELEC-001:
+    mappings:
+      - {framework: CWE, version: "4.16", control_id: "CWE-693", control_title: "stub", relation: supports, scope: general}
+  TCP-IPC-001:
+    mappings:
+      - {framework: CWE, version: "4.16", control_id: "CWE-284", control_title: "stub", relation: supports, scope: general}
+  TCP-MEM-001:
+    mappings:
+      - {framework: CWE, version: "4.16", control_id: "CWE-316", control_title: "stub", relation: supports, scope: general}

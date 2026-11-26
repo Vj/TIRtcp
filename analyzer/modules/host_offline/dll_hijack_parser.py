@@ -9,6 +9,7 @@ Maps to check_id: TCP-HOST-002
 from __future__ import annotations
 
 import csv
+import ntpath
 import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
@@ -52,7 +53,11 @@ USER_WRITABLE_PATH_FRAGMENTS = (
     "\\tmp\\",
     "\\public\\",
 )
-
+known_os_dlls = set(WINDOWS_KNOWN_DLLS)
+if host_evidence:
+    dll_env = host_evidence.get("dll_search_environment", {})
+    known_os_dlls.update(d.lower() for d in dll_env.get("known_dlls", []))
+    known_os_dlls.update(d.lower() for d in dll_env.get("system32_dlls", []))
 
 def _is_path_writable(
     candidate_dir: str,
@@ -64,8 +69,8 @@ def _is_path_writable(
         return True, "Matched weak_acls entry in host_evidence.json"
     if any(frag in norm for frag in USER_WRITABLE_PATH_FRAGMENTS):
         return True, "Located inside standard user-writable directory tree"
-    if app_dir_str and norm == app_dir_str.rstrip("\\/").lower():
-        return True, "Application installation directory (phantom DLL drop target if writable)"
+    # NOTE: the install dir is only reported when host_evidence proves it is writable (weak_acls above);
+    # assuming writability produced a HIGH finding for every optional-DLL probe in a default Program Files install.
     return False, ""
 
 
@@ -208,7 +213,7 @@ def parse_procmon_csv(
                 if operation not in {"CreateFile", "Load Image", "QueryOpen", "QueryBasicInformationFile"}:
                     continue
 
-                parent_dir = os.path.dirname(path_val)
+                parent_dir = ntpath.dirname(path_val)  # Procmon paths are Windows paths even when analysed on Linux/macOS
                 is_writable, reason = _is_path_writable(parent_dir, weak_acl_paths, app_dir_str)
                 if is_writable:
                     key = f"{proc_name}::{path_val.lower()}"
