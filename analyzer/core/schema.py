@@ -126,11 +126,12 @@ class Finding:
 
 @dataclass
 class ScanReport:
+    last_retest_diff: Optional[Dict[str, Any]] = field(default=None, init=False)
     target_name: str
     engagement_id: str
     compliance_profile: str  # "general" or "bfsi"
     authorized_runtime: bool
-    tool_version: str = "0.1.0-mvp"
+    tool_version: str = "1.0.0"
     compliance_last_verified: str = "2026-11-24"
     generated_at_utc: str = field(
         default_factory=lambda: datetime.now(timezone.utc).isoformat()
@@ -470,12 +471,14 @@ class ScanReport:
             if fp not in current_fps
         ]
 
-        return {
+        res = {
             "new_actionable": new_count,
             "persistent_actionable": persistent_count,
             "fixed_since_baseline": len(fixed_items),
             "fixed_findings": fixed_items,
         }
+        self.last_retest_diff = res
+        return res
 
     # -------------------------------------------------------------------------
     # 3. Single-Format Standalone HTML Projection
@@ -523,7 +526,7 @@ class ScanReport:
 
             cards_html.append(
                 f"""
-                <div class="card">
+                <div class="card" data-status="{f.status.value}" data-severity="{f.severity.value}">
                     <div class="card-header">
                         <div>
                             <span class="check-id">{esc(f.check_id)}</span>
@@ -571,24 +574,6 @@ class ScanReport:
   .kpi {{ background: #1e293b; padding: 14px; border-radius: 8px; text-align: center; }}
   .kpi .num {{ font-size: 24px; font-weight: 700; color: #f8fafc; }}
   .kpi .lbl {{ font-size: 12px; color: #94a3b8; margin-top: 4px; }}
-  <div class="filters" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px;">
-    <button class="fbtn active" onclick="filterCards('ALL', this)">All Findings</button>
-    <button class="fbtn" onclick="filterCards('Fail', this)">Failures</button>
-    <button class="fbtn" onclick="filterCards('Evidence of Retention', this)">Retention</button>
-    <button class="fbtn" onclick="filterCards('Manual Required', this)">Manual Required</button>
-    <button class="fbtn" onclick="filterCards('Observation', this)">Observations</button>
-    <button class="fbtn" onclick="filterCards('Tooling Gap', this)">Tooling Gaps</button>
-    <button class="fbtn" onclick="filterCards('Verified Pass', this)">Verified Pass</button>
-  </div>
-  <script>
-    function filterCards(status, btn) {{
-      document.querySelectorAll('.fbtn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      document.querySelectorAll('.card').forEach(c => {{
-        c.style.display = (status === 'ALL' || c.dataset.status === status) ? 'block' : 'none';
-      }});
-    }}
-  </script>
   .card {{ background: #1e293b; border-radius: 8px; padding: 18px 20px; margin-bottom: 14px; border: 1px solid #334155; }}
   .card-header {{ display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 8px; }}
   .check-id {{ font-family: monospace; background: #334155; padding: 2px 6px; border-radius: 4px; font-size: 12px; margin-right: 8px; }}
@@ -630,6 +615,26 @@ class ScanReport:
     <div class="kpi"><div class="num">{counts['Observation']}</div><div class="lbl">Observations</div></div>
   </div>
 
+  <div class="filters" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px;">
+    <button class="fbtn active" style="background:#1e293b;color:#f8fafc;border:1px solid #38bdf8;padding:6px 12px;border-radius:6px;cursor:pointer;" onclick="filterCards('ALL', this)">All Findings</button>
+    <button class="fbtn" style="background:#1e293b;color:#f8fafc;border:1px solid #334155;padding:6px 12px;border-radius:6px;cursor:pointer;" onclick="filterCards('Fail', this)">Failures</button>
+    <button class="fbtn" style="background:#1e293b;color:#f8fafc;border:1px solid #334155;padding:6px 12px;border-radius:6px;cursor:pointer;" onclick="filterCards('Evidence of Retention', this)">Retention</button>
+    <button class="fbtn" style="background:#1e293b;color:#f8fafc;border:1px solid #334155;padding:6px 12px;border-radius:6px;cursor:pointer;" onclick="filterCards('Manual Required', this)">Manual Required</button>
+    <button class="fbtn" style="background:#1e293b;color:#f8fafc;border:1px solid #334155;padding:6px 12px;border-radius:6px;cursor:pointer;" onclick="filterCards('Observation', this)">Observations</button>
+    <button class="fbtn" style="background:#1e293b;color:#f8fafc;border:1px solid #334155;padding:6px 12px;border-radius:6px;cursor:pointer;" onclick="filterCards('Tooling Gap', this)">Tooling Gaps</button>
+    <button class="fbtn" style="background:#1e293b;color:#f8fafc;border:1px solid #334155;padding:6px 12px;border-radius:6px;cursor:pointer;" onclick="filterCards('Verified Pass', this)">Verified Pass</button>
+  </div>
+  <script>
+    function filterCards(status, btn) {{
+      document.querySelectorAll('.fbtn').forEach(b => b.style.borderColor = '#334155');
+      btn.style.borderColor = '#38bdf8';
+      document.querySelectorAll('.card').forEach(c => {{
+        c.style.display = (status === 'ALL' || c.dataset.status === status) ? 'block' : 'none';
+      }});
+    }}
+  </script>
+  {self._build_executive_extras_html()}
+
   {''.join(cards_html)}
 </div>
 </body>
@@ -650,8 +655,102 @@ class ScanReport:
             "generated_at_utc": self.generated_at_utc,
             "summary": self.summary_counts(),
             "risk_summary": self.compute_risk_score() if hasattr(self, "compute_risk_score") else {},
+            "remediation_roadmap": self.compute_remediation_roadmap(),
             "findings": [f.to_dict() for f in self.findings],
         }
+
+
+
+    def compute_remediation_roadmap(self) -> List[Dict[str, Any]]:
+        """Group actionable findings by Check ID with estimated engineering effort."""
+        effort_map = {
+            "TCP-BIN-001": "Build / Compiler Flag",
+            "TCP-BIN-002": "Release Signing Pipeline",
+            "TCP-SEC-001": "Config / Vault Migration",
+            "TCP-SEC-002": "Logging / Packaging Config",
+            "TCP-SCA-001": "Dependency Upgrade",
+            "TCP-HOST-001": "Installer / ACL Hardening",
+            "TCP-HOST-002": "Build / Search-Order Fix",
+            "TCP-NET-001": "Transport / TLS Config",
+            "TCP-ELEC-001": "Electron Fuse / Flag Fix",
+            "TCP-MGD-001": "Code / Manifest Fix",
+            "TCP-IPC-001": "IPC / Handler ACL Fix",
+            "TCP-MEM-001": "Session Zeroization Fix",
+            "TCP-BRW-001": "Browser / Profile Hardening",
+        }
+        sev_rank = {"Critical": 4, "High": 3, "Medium": 2, "Low": 1, "Info": 0}
+        grouped: Dict[str, Dict[str, Any]] = {}
+        for f in self.findings:
+            if f.status not in (FindingStatus.FAIL, FindingStatus.EVIDENCE_OF_RETENTION):
+                continue
+            entry = grouped.setdefault(
+                f.check_id,
+                {
+                    "check_id": f.check_id,
+                    "category": f.category,
+                    "max_severity": f.severity.value,
+                    "count": 0,
+                    "estimated_effort": effort_map.get(f.check_id, "Engineering Review"),
+                    "sample_title": f.title,
+                },
+            )
+            entry["count"] += 1
+            if sev_rank.get(f.severity.value, 0) > sev_rank.get(entry["max_severity"], 0):
+                entry["max_severity"] = f.severity.value
+                entry["sample_title"] = f.title
+
+        return sorted(
+            grouped.values(),
+            key=lambda x: (-sev_rank.get(x["max_severity"], 0), -x["count"], x["check_id"]),
+        )
+
+    def _build_executive_extras_html(self) -> str:
+        """Render Retest Resolved table and Top Remediation Priorities block for HTML reports."""
+        blocks: List[str] = []
+
+        # Retest Resolved Findings Table
+        diff = getattr(self, 'last_retest_diff', None)
+        if diff and diff.get("fixed_findings"):
+            rows = []
+            for item in diff.get("fixed_findings", []):
+                cid = str(item.get("check_id", "")).replace("<", "&lt;")
+                title = str(item.get("title", "")).replace("<", "&lt;")
+                asset = str(item.get("affected_asset", "")).replace("<", "&lt;")
+                rows.append(f"<tr><td><code>{cid}</code></td><td>{title}</td><td><code>{asset}</code></td></tr>")
+            blocks.append(
+                "<div style='background:#ecfdf5;border:1px solid #a7f3d0;border-radius:8px;padding:14px;margin-bottom:18px;'>"
+                f"<h3 style='margin:0 0 8px 0;color:#065f46;'>Resolved Since Baseline ({len(rows)} Fixed)</h3>"
+                "<table style='width:100%;border-collapse:collapse;font-size:13px;'>"
+                "<thead><tr style='text-align:left;border-bottom:1px solid #a7f3d0;'>"
+                "<th>Check ID</th><th>Title</th><th>Asset</th></tr></thead>"
+                f"<tbody>{''.join(rows)}</tbody></table></div>"
+            )
+
+        # Top Actionable Remediation Priorities
+        actionable = [
+            f for f in self.findings
+            if f.status in (FindingStatus.FAIL, FindingStatus.EVIDENCE_OF_RETENTION)
+            and f.severity in (Severity.CRITICAL, Severity.HIGH)
+        ]
+        if actionable:
+            p_rows = []
+            for f in actionable[:10]:
+                cid = f.check_id.replace("<", "&lt;")
+                sev = f.severity.value
+                title = f.title.replace("<", "&lt;")
+                retest = f.evidence.get("retest_status", "")
+                r_badge = f" <span style='background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:4px;font-size:11px;'>{retest}</span>" if retest in ("NEW", "PERSISTENT") else ""
+                p_rows.append(f"<tr><td><strong>{sev}</strong></td><td><code>{cid}</code></td><td>{title}{r_badge}</td></tr>")
+            blocks.append(
+                "<div style='background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;padding:14px;margin-bottom:18px;'>"
+                f"<h3 style='margin:0 0 8px 0;color:#0f172a;'>Immediate Remediation Priorities (Top {len(p_rows)} Critical/High)</h3>"
+                "<table style='width:100%;border-collapse:collapse;font-size:13px;'>"
+                "<thead><tr style='text-align:left;border-bottom:1px solid #cbd5e1;'>"
+                "<th>Severity</th><th>Check ID</th><th>Finding</th></tr></thead>"
+                f"<tbody>{''.join(p_rows)}</tbody></table></div>"
+            )
+
+        return "\n".join(blocks)
 
     def write_outputs(self, output_dir: Path, base_name: str = "tirtcp_report") -> Dict[str, Path]:
         output_dir.mkdir(parents=True, exist_ok=True)

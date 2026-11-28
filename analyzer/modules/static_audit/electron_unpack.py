@@ -255,6 +255,7 @@ def _read_asar_text_files(asar_path: Path, max_files: int = 2000) -> List[Tuple[
 def scan_electron_app(
     target_path: Path,
     mapper: ComplianceMapper,
+    ctx: Any = None,
 ) -> List[Finding]:
     """
     Audit an Electron thick-client directory for Fuses hardening, BrowserWindow

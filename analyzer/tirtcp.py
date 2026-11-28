@@ -44,11 +44,14 @@ from analyzer.core.schema import (
 from analyzer.modules.host_offline.acl_installer import scan_filesystem_acls
 from analyzer.modules.host_offline.dll_hijack_parser import parse_procmon_csv
 from analyzer.modules.host_offline.ipc_uri_audit import audit_ipc_and_handlers
+from analyzer.modules.host_offline.state_diff_audit import analyze_state_diff
+from analyzer.modules.host_offline.trust_firewall_audit import audit_trust_and_firewall
 from analyzer.modules.network_protocol.pcap_analyzer import analyze_pcap_capture
 from analyzer.modules.network_protocol.tls_inspector import inspect_tls_endpoints
 from analyzer.modules.runtime_gated.memory_retention import analyze_post_logout_memory
 from analyzer.modules.runtime_memory.frida_trace_audit import analyze_runtime_hooks
 from analyzer.modules.static_audit.binary_hardening import scan_binary_hardening
+from analyzer.modules.static_audit.crypto_antitamper_audit import audit_crypto_and_antitamper
 from analyzer.modules.static_audit.electron_unpack import scan_electron_app
 from analyzer.modules.static_audit.sca_fingerprint import scan_dependencies_and_native_libs
 from analyzer.modules.static_audit.secrets_db_audit import scan_secrets_db_and_debug
@@ -59,6 +62,7 @@ from analyzer.modules.static_audit.string_intel import scan_string_intel
 from analyzer.modules.static_audit.dotnet_intel import scan_dotnet_intel
 from analyzer.modules.static_audit.dotnet_bundle import extract_bundle
 from analyzer.core.coverage import build_coverage_finding
+from analyzer.core.pdf_exporter import export_html_to_pdf
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from analyzer.modules.static_audit.browser_profile_audit import scan_browser_artifacts
 try:
@@ -215,6 +219,17 @@ def parse_args(baseline_report: Optional[Path] = None) -> argparse.Namespace:
         default=None,
         help="Optional custom Semgrep rules path for decompiled C#/Java source analysis.",
     )
+    parser.add_argument(
+        "--state-diff",
+        type=Path,
+        default=None,
+        help="Optional path to state_diff.json produced by scripts/dynamic_capture.ps1.",
+    )
+    parser.add_argument(
+        "--pdf",
+        action="store_true",
+        help="Also export a PDF report alongside HTML/JSON/SARIF (requires WeasyPrint).",
+    )
     return parser.parse_args()
 
 
@@ -302,13 +317,19 @@ def _run_stages_parallel(
             "Binary exploit mitigations (PE/ELF/Mach-O)",
             "TCP-BIN-001",
             str(args.target),
-            lambda: scan_binary_hardening(args.target, mapper),
+            lambda: scan_binary_hardening(args.target, mapper, ctx=scan_ctx),
+        ),
+        (
+            "Native crypto S-box, weak PRNG & trust-API audit",
+            "TCP-BIN-001",
+            str(args.target),
+            lambda: audit_crypto_and_antitamper(args.target, mapper, ctx=scan_ctx),
         ),
         (
             "Digital signature, timestamp & revocation verification",
             "TCP-BIN-002",
             str(args.target),
-            lambda: scan_code_signatures(args.target, mapper),
+            lambda: scan_code_signatures(args.target, mapper, ctx=scan_ctx),
         ),
         (
             "Embedded DB strings, hardcoded secrets, PDB debug & PII log leaks",
@@ -447,7 +468,7 @@ def main() -> int:
         "Digital signature, timestamp & revocation verification",
         "TCP-BIN-002",
         str(args.target),
-        lambda: scan_code_signatures(args.target, mapper),
+        lambda: scan_code_signatures(args.target, mapper, ctx=scan_ctx),
         report,
     )
     _run_stage(
@@ -533,7 +554,7 @@ def main() -> int:
         "Electron Fuses, app.asar webPreferences & Chromium baseline audit",
         "TCP-ELEC-001",
         str(args.target),
-        lambda: scan_electron_app(args.target, mapper),
+        lambda: scan_electron_app(args.target, mapper, ctx=scan_ctx),
         report,
     )
     _run_stage(
@@ -570,6 +591,13 @@ def main() -> int:
             lambda: audit_ipc_and_handlers(host_evidence, mapper),
             report,
         )
+        _run_stage(
+            "Host Trusted Root CA, firewall & Credential Manager hardening audit",
+            "TCP-HOST-001",
+            str(args.evidence),
+            lambda: audit_trust_and_firewall(host_evidence, args.target, mapper),
+            report,
+        )
 
     # -------------------------------------------------------------------------
     # PHASE 4: Authorization-Gated Post-Logout Memory Hygiene
@@ -604,6 +632,15 @@ def main() -> int:
             )
 
     # -------------------------------------------------------------------------
+    if getattr(args, "state_diff", None) is not None:
+        _run_stage(
+            f"Runtime filesystem & Run-key state diff audit ({args.state_diff.name})",
+            "TCP-HOST-001",
+            str(args.state_diff),
+            lambda: analyze_state_diff(args.state_diff, mapper),
+            report,
+        )
+
     # Report Export & Executive Summary
     # -------------------------------------------------------------------------
     report.add_finding(build_coverage_finding(args, scan_ctx, report, host_evidence, bundle_summaries))
@@ -643,6 +680,12 @@ def main() -> int:
     print(f"HTML Report        : {written['html'].resolve()}")
     print(f"JSON Findings      : {written['json'].resolve()}")
     print(f"SARIF v2.1.0       : {written['sarif'].resolve()}")
+    if getattr(args, "pdf", False):
+        pdf_out = export_html_to_pdf(written["html"])
+        if pdf_out:
+            print(f"PDF Report         : {pdf_out.resolve()}")
+        else:
+            print("PDF Report         : Skipped (WeasyPrint/GTK3 runtime not installed)")
     print("=" * 72)
     risk = report.compute_risk_score()
     print(f"Overall Risk Score : {risk['risk_score']}/100 ({risk['risk_rating']})")

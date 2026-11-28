@@ -212,6 +212,7 @@ def _verify_single_file(
 def scan_code_signatures(
     target_path: Path,
     mapper: ComplianceMapper,
+    ctx: Any = None,
 ) -> List[Finding]:
     check_id = "TCP-BIN-002"
     compliance_refs = mapper.resolve(check_id)

@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterator, List, Set, Tuple
 
 from analyzer.core.compliance_loader import ComplianceMapper
+from analyzer.modules.network_protocol.wire_dissectors import inspect_wire_protocols
 from analyzer.core.schema import (
     Confidence,
     Finding,
@@ -423,4 +424,6 @@ def analyze_pcap_capture(
             )
         )
 
+    if "tcp_payloads" in locals() and tcp_payloads:
+        findings.extend(inspect_wire_protocols(tcp_payloads, str(pcap_path), mapper))
     return findings

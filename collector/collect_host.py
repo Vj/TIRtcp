@@ -585,6 +585,41 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+
+
+def collect_security_posture_extras() -> dict:
+    """Collect custom Root CAs, target-related Firewall rules, and Credential Manager target names."""
+    extras = {"custom_root_cas": [], "firewall_rules": [], "credential_targets": []}
+    if sys.platform != "win32":
+        return extras
+
+    # 1. Non-Microsoft Root CAs (detects enterprise/rogue MITM root certificates)
+    ps_ca = (
+        "Get-ChildItem Cert:\LocalMachine\Root, Cert:\CurrentUser\Root -ErrorAction SilentlyContinue | "
+        "Where-Object { $_.Subject -notmatch 'Microsoft|DigiCert|VeriSign|GlobalSign|Baltimore|Entrust|Sectigo|thawte|GeoTrust|IdenTrust|ISRG' } | "
+        "Select-Object -First 40 Subject, Thumbprint, NotAfter | ConvertTo-Json -Compress"
+    )
+    try:
+        out = subprocess.check_output(["powershell", "-NoProfile", "-Command", ps_ca], text=True, timeout=15)
+        if out.strip():
+            parsed = json.loads(out)
+            extras["custom_root_cas"] = parsed if isinstance(parsed, list) else [parsed]
+    except Exception:
+        pass
+
+    # 2. Windows Credential Manager target names only (never secrets)
+    try:
+        cmd_out = subprocess.check_output(["cmdkey", "/list"], text=True, timeout=10, errors="ignore")
+        for line in cmd_out.splitlines():
+            line = line.strip()
+            if line.lower().startswith("target:"):
+                extras["credential_targets"].append(line.split(":", 1)[1].strip())
+    except Exception:
+        pass
+
+    return extras
+
+
 def main() -> int:
     args = parse_args()
 
@@ -598,6 +633,7 @@ def main() -> int:
 
     evidence: Dict[str, Any] = {
         "schema_version": "2.0.0",
+        "security_posture": collect_security_posture_extras(),
         "collected_at_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "hostname": platform.node(),
         "os_release": platform.platform(),

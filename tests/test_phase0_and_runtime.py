@@ -217,3 +217,265 @@ def test_pe_profile_and_string_intel_redaction(tmp_path: Path) -> None:
     serialized = json.dumps([f.to_dict() for f in str_res])
     assert "AKIAIOSFODNN7EXAMPLE" not in serialized
     assert any("Cleartext Endpoints" in f.title for f in str_res)
+
+def test_binary_hardening_cfg_cet_and_high_entropy_aslr(tmp_path: Path) -> None:
+    import scripts.create_demo_target as demo
+    from analyzer.modules.static_audit.binary_hardening import scan_binary_hardening
+
+    exe = tmp_path / "LegacyNative.exe"
+    exe.write_bytes(demo.minimal_pe())
+    ctx = ScanContext(tmp_path)
+
+    findings = scan_binary_hardening(tmp_path, _mapper(), ctx=ctx)
+    assert len(findings) == 1
+    assert findings[0].status == FindingStatus.FAIL
+    assert "ASLR" in findings[0].title or "Control Flow Guard" in findings[0].title
+
+
+def test_non_http_wire_protocol_dissectors() -> None:
+    from analyzer.modules.network_protocol.wire_dissectors import inspect_wire_protocols
+
+    payloads = [
+        {"dst": "10.0.0.12", "dst_port": 5432, "data": b"\x00\x00\x00\x21\x00\x03\x00\x00user\x00sa_admin\x00database\x00core\x00\x00"},
+        {"dst": "10.0.0.15", "dst_port": 1883, "data": b"\x10\x12\x00\x04MQTT\x04\x02\x00\x3c\x00\x06client"},
+        {"dst": "10.0.0.20", "dst_port": 50051, "data": b"PRI * HTTP/2.0\r\n\r\nSM\r\n\r\napplication/grpc"},
+    ]
+    findings = inspect_wire_protocols(payloads, "session.pcap", _mapper())
+    titles = [f.title for f in findings]
+    assert any("PostgreSQL" in t for t in titles)
+    assert any("MQTT" in t for t in titles)
+    assert any("gRPC" in t for t in titles)
+
+
+def test_html_report_renders_retest_resolved_and_priority_matrix(tmp_path: Path) -> None:
+    rep1 = ScanReport(
+        target_name="App.exe",
+        engagement_id="ENG-1",
+        compliance_profile="general",
+        authorized_runtime=False,
+    )
+    rep1.add_finding(
+        Finding(
+            check_id="TCP-SEC-001",
+            title="Legacy Hardcoded API Secret",
+            category="Secrets",
+            status=FindingStatus.FAIL,
+            severity=Severity.HIGH,
+            confidence=Confidence.HIGH,
+            affected_asset=r"C:\App\config.ini",
+            summary="Old secret.",
+        )
+    )
+    base_json = tmp_path / "base.json"
+    base_json.write_text(json.dumps(rep1.to_dict()), encoding="utf-8")
+
+    rep2 = ScanReport(
+        target_name="App.exe",
+        engagement_id="ENG-2",
+        compliance_profile="general",
+        authorized_runtime=False,
+    )
+    rep2.add_finding(
+        Finding(
+            check_id="TCP-NET-001",
+            title="Cleartext Endpoint Discovered",
+            category="Network",
+            status=FindingStatus.FAIL,
+            severity=Severity.CRITICAL,
+            confidence=Confidence.HIGH,
+            affected_asset="http://api.local",
+            summary="Cleartext HTTP.",
+        )
+    )
+    rep2.apply_baseline_diff(base_json)
+    out = rep2.write_outputs(tmp_path / "out", base_name="retest_check")
+    html_txt = out["html"].read_text(encoding="utf-8")
+    assert "Resolved Since Baseline (1 Fixed)" in html_txt
+    assert "Immediate Remediation Priorities" in html_txt
+
+
+def test_pdf_exporter_graceful_handling(tmp_path: Path) -> None:
+    from analyzer.core.pdf_exporter import export_html_to_pdf
+
+    sample_html = tmp_path / "sample.html"
+    sample_html.write_text("<html><body><h1>TIRtcp</h1></body></html>", encoding="utf-8")
+    res = export_html_to_pdf(sample_html)
+    assert res is None or res.exists()
+
+
+def test_remediation_roadmap_grouping() -> None:
+    rep = ScanReport(
+        target_name="Client.exe",
+        engagement_id="ENG-ROADMAP",
+        compliance_profile="general",
+        authorized_runtime=False,
+    )
+    rep.add_finding(
+        Finding(
+            check_id="TCP-SEC-001",
+            title="Hardcoded DB String",
+            category="Secrets",
+            status=FindingStatus.FAIL,
+            severity=Severity.CRITICAL,
+            confidence=Confidence.HIGH,
+            affected_asset="app.config",
+            summary="DB creds.",
+        )
+    )
+    rep.add_finding(
+        Finding(
+            check_id="TCP-BIN-001",
+            title="Missing CFG",
+            category="Binary Hardening",
+            status=FindingStatus.FAIL,
+            severity=Severity.LOW,
+            confidence=Confidence.HIGH,
+            affected_asset="Client.exe",
+            summary="No CFG.",
+        )
+    )
+    roadmap = rep.compute_remediation_roadmap()
+    assert len(roadmap) == 2
+    assert roadmap[0]["check_id"] == "TCP-SEC-001"
+    assert roadmap[0]["estimated_effort"] == "Config / Vault Migration"
+
+
+def test_host_trust_ca_and_firewall_hardening(tmp_path: Path) -> None:
+    from analyzer.modules.host_offline.trust_firewall_audit import audit_trust_and_firewall
+
+    evidence = {
+        "security_posture": {
+            "custom_root_cas": [
+                {"Subject": "CN=Rogue-Intercept-Root-CA", "Thumbprint": "AABBCC112233"}
+            ],
+            "firewall_rules": [
+                {"Direction": "Inbound", "Action": "Allow", "Program": "C:\\App\\DemoClient.exe", "RemoteAddress": "Any"}
+            ],
+            "credential_targets": ["DemoClient_SSO_Token"],
+        }
+    }
+    findings = audit_trust_and_firewall(evidence, tmp_path / "DemoClient.exe", _mapper())
+    titles = [f.title for f in findings]
+    assert any("Non-Standard Trusted Root CA" in t for t in titles)
+    assert any("Broad Inbound Windows Firewall" in t for t in titles)
+    assert any("Credential Manager" in t for t in titles)
+
+
+def test_crypto_sbox_and_triage_worklist(tmp_path: Path) -> None:
+    import scripts.create_demo_target as demo
+    from analyzer.modules.static_audit.crypto_antitamper_audit import audit_crypto_and_antitamper
+    from scripts.triage_worklist import apply_triage_decisions
+
+    exe = tmp_path / "CustomCrypto.exe"
+    sbox = bytes.fromhex("637c777bf26b6fc53001672bfed7ab76")
+    exe.write_bytes(demo.minimal_pe() + b"\x00" + sbox + b"\x00srand\x00")
+    ctx = ScanContext(tmp_path)
+
+    findings = audit_crypto_and_antitamper(tmp_path, _mapper(), ctx=ctx)
+    titles = [f.title for f in findings]
+    assert any("Embedded AES S-Box" in t for t in titles)
+    assert any("PRNG" in t for t in titles)
+
+    rep_file = tmp_path / "rep.json"
+    rep_file.write_text(
+        json.dumps(
+            {
+                "findings": [
+                    {
+                        "check_id": "TCP-MGD-001",
+                        "title": "Manual Review Needed",
+                        "affected_asset": "CustomCrypto.exe",
+                        "status": "Manual Required",
+                        "severity": "Medium",
+                        "evidence": {},
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    dec_file = tmp_path / "decisions.json"
+    dec_file.write_text(
+        json.dumps(
+            [
+                {
+                    "check_id": "TCP-MGD-001",
+                    "title": "Manual Review Needed",
+                    "affected_asset": "CustomCrypto.exe",
+                    "status": "Fail",
+                    "severity": "High",
+                    "reviewer": "Lead Assessor",
+                    "verdict": "Confirmed Exploitable",
+                    "notes": "Verified via dnSpy.",
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+    res = apply_triage_decisions(rep_file, dec_file)
+    assert res["updated_findings"] == 1
+    updated = json.loads(rep_file.read_text(encoding="utf-8"))
+    assert updated["findings"][0]["status"] == "Fail"
+    assert updated["findings"][0]["severity"] == "High"
+
+
+def test_spki_pin_detection_and_triage_rerender(tmp_path: Path) -> None:
+    import scripts.create_demo_target as demo
+    from analyzer.modules.static_audit.crypto_antitamper_audit import audit_crypto_and_antitamper
+    from scripts.triage_worklist import apply_triage_decisions
+
+    exe = tmp_path / "PinnedApp.exe"
+    pin = b"sha256/47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="
+    exe.write_bytes(demo.minimal_pe() + b"\x00" + pin + b"\x00")
+    ctx = ScanContext(tmp_path)
+
+    findings = audit_crypto_and_antitamper(tmp_path, _mapper(), ctx=ctx)
+    assert any("SPKI Public-Key Pinning" in f.title for f in findings)
+
+    rep_file = tmp_path / "tirtcp_PinnedApp.json"
+    rep_file.write_text(
+        json.dumps(
+            {
+                "target_name": "PinnedApp.exe",
+                "engagement_id": "ENG-TRIAGE",
+                "compliance_profile": "general",
+                "authorized_runtime": False,
+                "findings": [
+                    {
+                        "check_id": "TCP-MGD-001",
+                        "title": "Manual Review Item",
+                        "category": "Managed Code",
+                        "affected_asset": "PinnedApp.exe",
+                        "status": "Manual Required",
+                        "severity": "Medium",
+                        "confidence": "Medium",
+                        "summary": "Review item.",
+                        "evidence": {},
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    dec_file = tmp_path / "decisions.json"
+    dec_file.write_text(
+        json.dumps(
+            [
+                {
+                    "check_id": "TCP-MGD-001",
+                    "title": "Manual Review Item",
+                    "affected_asset": "PinnedApp.exe",
+                    "status": "Fail",
+                    "severity": "Critical",
+                    "reviewer": "Assessor",
+                    "verdict": "Confirmed",
+                    "notes": "Confirmed vulnerable.",
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+    res = apply_triage_decisions(rep_file, dec_file, rerender=True)
+    assert res["updated_findings"] == 1
+    assert (tmp_path / "tirtcp_PinnedApp.html").exists()
+    assert (tmp_path / "tirtcp_PinnedApp.sarif").exists()

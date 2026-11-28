@@ -4,6 +4,7 @@ Maps to check_id: TCP-NET-001
 """
 
 from __future__ import annotations
+import warnings
 
 import json
 import os
@@ -89,8 +90,10 @@ def _probe_tls_version(
     ctx.verify_mode = ssl.CERT_NONE
     try:
         ctx.set_ciphers("ALL:@SECLEVEL=0")
-        ctx.minimum_version = tls_ver
-        ctx.maximum_version = tls_ver
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            ctx.minimum_version = tls_ver
+            ctx.maximum_version = tls_ver
     except (ValueError, AttributeError, ssl.SSLError):
         return None
 

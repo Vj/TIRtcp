@@ -1,28 +1,37 @@
 {
-  "schema_version": "1.0.0",
-  "updated_utc": "2026-11-28T00:00:00Z",
+  "schema_version": "1.0",
+  "updated_at_utc": "2026-11-28T08:44:39.656229+00:00",
+  "kev_count": 1808,
   "advisories": [
     {
-      "id": "GHSA-5crp-9r3c-p9vr",
-      "cve": "CVE-2024-21907",
-      "ecosystem": "NuGet",
-      "package": "Newtonsoft.Json",
-      "fixed_version": "13.0.1",
-      "severity": "High",
-      "cisa_kev": false,
-      "epss": 0.42,
-      "summary": "Improper handling of exceptional conditions in Newtonsoft.Json causing StackOverflowException DoS."
-    },
-    {
-      "id": "GHSA-jfh8-c2jp-5v3q",
       "cve": "CVE-2021-44228",
       "ecosystem": "Maven",
       "package": "org.apache.logging.log4j:log4j-core",
-      "fixed_version": "2.17.1",
+      "fixed_version": "2.0.11",
       "severity": "Critical",
       "cisa_kev": true,
-      "epss": 0.97,
-      "summary": "Apache Log4j2 JNDI remote code execution vulnerability (Log4Shell)."
+      "epss": 1.0,
+      "summary": "Remote code injection in Log4j"
+    },
+    {
+      "cve": "CVE-2021-45046",
+      "ecosystem": "Maven",
+      "package": "org.apache.logging.log4j:log4j-core",
+      "fixed_version": "2.3.1",
+      "severity": "Critical",
+      "cisa_kev": true,
+      "epss": 0.9998,
+      "summary": "Incomplete fix for Apache Log4j vulnerability"
+    },
+    {
+      "cve": "CVE-2022-4135",
+      "ecosystem": "npm",
+      "package": "electron",
+      "fixed_version": "19.1.8",
+      "severity": "Critical",
+      "cisa_kev": true,
+      "epss": 0.145,
+      "summary": "Heap buffer overflow in GPU"
     },
     {
       "id": "GHSA-6vrh-4526-6638",
@@ -34,6 +43,2026 @@
       "cisa_kev": true,
       "epss": 0.94,
       "summary": "Heap buffer overflow in libwebp affecting Electron/Chromium renderers."
+    },
+    {
+      "cve": "CVE-2006-0743",
+      "ecosystem": "NuGet",
+      "package": "log4net",
+      "fixed_version": "1.2.10",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0637,
+      "summary": "Apache log4net format string vulnerability causes DoS"
+    },
+    {
+      "cve": "CVE-2009-1190",
+      "ecosystem": "Maven",
+      "package": "org.springframework:spring-core",
+      "fixed_version": "3.0.0.RELEASE",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.028,
+      "summary": "Spring Framework Inefficient Regular Expression Complexity"
+    },
+    {
+      "cve": "CVE-2011-2730",
+      "ecosystem": "Maven",
+      "package": "org.springframework:spring-core",
+      "fixed_version": "2.5.7.SR023",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.1178,
+      "summary": "Improper Neutralization of Directives in Dynamically Evaluated Code in Spring Framework"
+    },
+    {
+      "cve": "CVE-2011-2894",
+      "ecosystem": "Maven",
+      "package": "org.springframework:spring-core",
+      "fixed_version": "2.0.7",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.086,
+      "summary": "Spring Framework and Spring Security vulnerable to Deserialization of Untrusted Data"
+    },
+    {
+      "cve": "CVE-2014-1829",
+      "ecosystem": "PyPI",
+      "package": "requests",
+      "fixed_version": "2.3.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.022,
+      "summary": "Requests (aka python-requests) before 2.3.0 allows remote servers to obtain a netrc password by reading the Authorization header in a redirected request."
+    },
+    {
+      "cve": "CVE-2014-1830",
+      "ecosystem": "PyPI",
+      "package": "requests",
+      "fixed_version": "2.3.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0204,
+      "summary": "Requests (aka python-requests) before 2.3.0 allows remote servers to obtain sensitive information by reading the Proxy-Authorization header in a redirected request."
+    },
+    {
+      "cve": "CVE-2014-3578",
+      "ecosystem": "Maven",
+      "package": "org.springframework:spring-core",
+      "fixed_version": "4.0.5",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0639,
+      "summary": "Improper Limitation of a Pathname to a Restricted Directory in Spring Framework"
+    },
+    {
+      "cve": "CVE-2014-6393",
+      "ecosystem": "npm",
+      "package": "express",
+      "fixed_version": "4.5.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0114,
+      "summary": "No Charset in Content-Type Header in express"
+    },
+    {
+      "cve": "CVE-2015-0201",
+      "ecosystem": "Maven",
+      "package": "org.springframework:spring-core",
+      "fixed_version": "4.1.5",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.019,
+      "summary": "Moderate severity vulnerability that affects org.springframework:spring-core"
+    },
+    {
+      "cve": "CVE-2015-2296",
+      "ecosystem": "PyPI",
+      "package": "requests",
+      "fixed_version": "2.6.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0316,
+      "summary": "The resolve_redirects function in sessions.py in requests 2.1.0 through 2.5.3 allows remote attackers to conduct session fixation attacks via a cookie without a host value in a redirect."
+    },
+    {
+      "cve": "CVE-2015-5211",
+      "ecosystem": "Maven",
+      "package": "org.springframework:spring-core",
+      "fixed_version": "3.2.15",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0256,
+      "summary": "Files or Directories Accessible to External Parties in org.springframework:spring-core"
+    },
+    {
+      "cve": "CVE-2015-9235",
+      "ecosystem": "npm",
+      "package": "jsonwebtoken",
+      "fixed_version": "4.2.2",
+      "severity": "Critical",
+      "cisa_kev": false,
+      "epss": 0.0837,
+      "summary": "Verification Bypass in jsonwebtoken"
+    },
+    {
+      "cve": "CVE-2016-10518",
+      "ecosystem": "npm",
+      "package": "ws",
+      "fixed_version": "1.0.1",
+      "severity": "Low",
+      "cisa_kev": false,
+      "epss": 0.0195,
+      "summary": "Remote Memory Disclosure in ws"
+    },
+    {
+      "cve": "CVE-2016-10542",
+      "ecosystem": "npm",
+      "package": "ws",
+      "fixed_version": "1.1.1",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0729,
+      "summary": "DoS due to excessively large websocket message in ws"
+    },
+    {
+      "cve": "CVE-2016-5007",
+      "ecosystem": "Maven",
+      "package": "org.springframework:spring-core",
+      "fixed_version": "4.1.1",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.028,
+      "summary": "Spring Security and Spring Framework may not recognize certain paths that should be protected"
+    },
+    {
+      "cve": "CVE-2016-9015",
+      "ecosystem": "PyPI",
+      "package": "urllib3",
+      "fixed_version": "1.18.1",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0075,
+      "summary": "Versions 1.17 and 1.18 of the Python urllib3 library suffer from a vulnerability that can cause them, in certain configurations, to not correctly validate TLS certificates. This places users of the library with those configurations at risk "
+    },
+    {
+      "cve": "CVE-2016-9243",
+      "ecosystem": "PyPI",
+      "package": "cryptography",
+      "fixed_version": "1.5.3",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0346,
+      "summary": "HKDF in cryptography before 1.5.2 returns an empty byte-string if used with a length less than algorithm.digest_size."
+    },
+    {
+      "cve": "CVE-2017-1000424",
+      "ecosystem": "npm",
+      "package": "electron",
+      "fixed_version": "1.7.6",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0098,
+      "summary": "Electron vulnerable to URL spoofing via PDFium"
+    },
+    {
+      "cve": "CVE-2017-12581",
+      "ecosystem": "npm",
+      "package": "electron",
+      "fixed_version": "1.6.8",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0669,
+      "summary": "Electron vulnerable to remote command execution"
+    },
+    {
+      "cve": "CVE-2017-16151",
+      "ecosystem": "npm",
+      "package": "electron",
+      "fixed_version": "1.7.8",
+      "severity": "Critical",
+      "cisa_kev": false,
+      "epss": 0.0262,
+      "summary": "Chromium Remote Code Execution in electron"
+    },
+    {
+      "cve": "CVE-2017-18342",
+      "ecosystem": "PyPI",
+      "package": "pyyaml",
+      "fixed_version": "5.1",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0481,
+      "summary": "In PyYAML before 5.1, the yaml.load() API could execute arbitrary code if used with untrusted data. The load() function has been deprecated in version 5.1 and the 'UnsafeLoader' has been introduced for backward compatibility with the functi"
+    },
+    {
+      "cve": "CVE-2017-5645",
+      "ecosystem": "Maven",
+      "package": "org.apache.logging.log4j:log4j-core",
+      "fixed_version": "2.8.2",
+      "severity": "Critical",
+      "cisa_kev": false,
+      "epss": 0.8869,
+      "summary": "Deserialization of Untrusted Data in Log4j"
+    },
+    {
+      "cve": "CVE-2018-1000136",
+      "ecosystem": "npm",
+      "package": "electron",
+      "fixed_version": "2.0.0-beta.5",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0508,
+      "summary": "Electron Vulnerable to Code Execution by Re-Enabling Node.js Integration"
+    },
+    {
+      "cve": "CVE-2018-10903",
+      "ecosystem": "PyPI",
+      "package": "cryptography",
+      "fixed_version": "2.3",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.032,
+      "summary": "PyCA Cryptography vulnerable to GCM tag forgery"
+    },
+    {
+      "cve": "CVE-2018-11040",
+      "ecosystem": "Maven",
+      "package": "org.springframework:spring-core",
+      "fixed_version": "4.3.18.RELEASE",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0318,
+      "summary": "Moderate severity vulnerability that affects org.springframework:spring-core"
+    },
+    {
+      "cve": "CVE-2018-1199",
+      "ecosystem": "Maven",
+      "package": "org.springframework:spring-core",
+      "fixed_version": "4.1.5",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.028,
+      "summary": "Improper Input Validation in org.springframework.security:spring-security-core, org.springframework.security:spring-security-core , and org.springframework:spring-core"
+    },
+    {
+      "cve": "CVE-2018-12023",
+      "ecosystem": "Maven",
+      "package": "com.fasterxml.jackson.core:jackson-databind",
+      "fixed_version": "2.9.6",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0786,
+      "summary": "Deserialization of Untrusted Data"
+    },
+    {
+      "cve": "CVE-2018-1257",
+      "ecosystem": "Maven",
+      "package": "org.springframework:spring-core",
+      "fixed_version": "4.3.17",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0302,
+      "summary": "Denial of Service in org.springframework:spring-core"
+    },
+    {
+      "cve": "CVE-2018-1258",
+      "ecosystem": "Maven",
+      "package": "org.springframework:spring-core",
+      "fixed_version": "5.0.6.RELEASE",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0246,
+      "summary": "Spring Framework when used in combination with any versions of Spring Security contains an authorization bypass"
+    },
+    {
+      "cve": "CVE-2018-1271",
+      "ecosystem": "Maven",
+      "package": "org.springframework:spring-core",
+      "fixed_version": "4.3.15",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.3034,
+      "summary": "Path Traversal in org.springframework:spring-core"
+    },
+    {
+      "cve": "CVE-2018-1272",
+      "ecosystem": "Maven",
+      "package": "org.springframework:spring-core",
+      "fixed_version": "5.0.5",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0307,
+      "summary": "Possible privilege escalation in org.springframework:spring-core"
+    },
+    {
+      "cve": "CVE-2018-1285",
+      "ecosystem": "NuGet",
+      "package": "log4net",
+      "fixed_version": "2.0.10",
+      "severity": "Critical",
+      "cisa_kev": false,
+      "epss": 0.1782,
+      "summary": "XML External Entity attack in log4net"
+    },
+    {
+      "cve": "CVE-2018-14718",
+      "ecosystem": "Maven",
+      "package": "com.fasterxml.jackson.core:jackson-databind",
+      "fixed_version": "2.6.7.3",
+      "severity": "Critical",
+      "cisa_kev": false,
+      "epss": 0.1268,
+      "summary": "Arbitrary Code Execution in jackson-databind"
+    },
+    {
+      "cve": "CVE-2018-14719",
+      "ecosystem": "Maven",
+      "package": "com.fasterxml.jackson.core:jackson-databind",
+      "fixed_version": "2.7.9.5",
+      "severity": "Critical",
+      "cisa_kev": false,
+      "epss": 0.0968,
+      "summary": "Arbitrary Code Execution in jackson-databind"
+    },
+    {
+      "cve": "CVE-2018-15756",
+      "ecosystem": "Maven",
+      "package": "org.springframework:spring-core",
+      "fixed_version": "4.3.20.RELEASE",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0774,
+      "summary": "Denial of Service in Spring Framework"
+    },
+    {
+      "cve": "CVE-2018-16487",
+      "ecosystem": "npm",
+      "package": "lodash",
+      "fixed_version": "4.17.11",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0149,
+      "summary": "Prototype Pollution in lodash"
+    },
+    {
+      "cve": "CVE-2018-18074",
+      "ecosystem": "PyPI",
+      "package": "requests",
+      "fixed_version": "2.20.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0693,
+      "summary": "The Requests package before 2.20.0 for Python sends an HTTP Authorization header to an http URI upon receiving a same-hostname https-to-http redirect, which makes it easier for remote attackers to discover credentials by sniffing the networ"
+    },
+    {
+      "cve": "CVE-2018-20060",
+      "ecosystem": "PyPI",
+      "package": "urllib3",
+      "fixed_version": "1.23",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0449,
+      "summary": "urllib3 before version 1.23 does not remove the Authorization HTTP header when following a cross-origin redirect (i.e., a redirect that differs in host, port, or scheme). This can allow for credentials in the Authorization header to be expo"
+    },
+    {
+      "cve": "CVE-2018-25091",
+      "ecosystem": "PyPI",
+      "package": "urllib3",
+      "fixed_version": "1.24.2",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0059,
+      "summary": "Authorization Header forwarded on redirect"
+    },
+    {
+      "cve": "CVE-2018-3721",
+      "ecosystem": "npm",
+      "package": "lodash",
+      "fixed_version": "4.17.5",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0233,
+      "summary": "Prototype Pollution in lodash"
+    },
+    {
+      "cve": "CVE-2019-1010266",
+      "ecosystem": "npm",
+      "package": "lodash",
+      "fixed_version": "4.17.11",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0298,
+      "summary": "Regular Expression Denial of Service (ReDoS) in lodash"
+    },
+    {
+      "cve": "CVE-2019-10742",
+      "ecosystem": "npm",
+      "package": "axios",
+      "fixed_version": "0.18.1",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0614,
+      "summary": "Denial of Service in axios"
+    },
+    {
+      "cve": "CVE-2019-10744",
+      "ecosystem": "npm",
+      "package": "lodash",
+      "fixed_version": "4.17.12",
+      "severity": "Critical",
+      "cisa_kev": false,
+      "epss": 0.0501,
+      "summary": "Prototype Pollution in lodash"
+    },
+    {
+      "cve": "CVE-2019-11236",
+      "ecosystem": "PyPI",
+      "package": "urllib3",
+      "fixed_version": "1.24.3",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0206,
+      "summary": "In the urllib3 library through 1.24.1 for Python, CRLF injection is possible if the attacker controls the request parameter."
+    },
+    {
+      "cve": "CVE-2019-11324",
+      "ecosystem": "PyPI",
+      "package": "urllib3",
+      "fixed_version": "1.24.2",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0291,
+      "summary": "Improper Certificate Validation in urllib3"
+    },
+    {
+      "cve": "CVE-2019-12086",
+      "ecosystem": "Maven",
+      "package": "com.fasterxml.jackson.core:jackson-databind",
+      "fixed_version": "2.6.7.3",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.2195,
+      "summary": "Information exposure in FasterXML jackson-databind"
+    },
+    {
+      "cve": "CVE-2019-14379",
+      "ecosystem": "Maven",
+      "package": "com.fasterxml.jackson.core:jackson-databind",
+      "fixed_version": "2.7.9.6",
+      "severity": "Critical",
+      "cisa_kev": false,
+      "epss": 0.0693,
+      "summary": "Deserialization of untrusted data in FasterXML jackson-databind"
+    },
+    {
+      "cve": "CVE-2019-16335",
+      "ecosystem": "Maven",
+      "package": "com.fasterxml.jackson.core:jackson-databind",
+      "fixed_version": "2.6.7.3",
+      "severity": "Critical",
+      "cisa_kev": false,
+      "epss": 0.0496,
+      "summary": "Polymorphic Typing issue in FasterXML jackson-databind"
+    },
+    {
+      "cve": "CVE-2019-20477",
+      "ecosystem": "PyPI",
+      "package": "pyyaml",
+      "fixed_version": "5.2b1",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0511,
+      "summary": "PyYAML 5.1 through 5.1.2 has insufficient restrictions on the load and load_all functions because of a class deserialization issue, e.g., Popen is a class in the subprocess module. NOTE: this issue exists because of an incomplete fix for CV"
+    },
+    {
+      "cve": "CVE-2020-10672",
+      "ecosystem": "Maven",
+      "package": "com.fasterxml.jackson.core:jackson-databind",
+      "fixed_version": "2.9.10.4",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0306,
+      "summary": "jackson-databind mishandles the interaction between serialization gadgets and typing"
+    },
+    {
+      "cve": "CVE-2020-10969",
+      "ecosystem": "Maven",
+      "package": "com.fasterxml.jackson.core:jackson-databind",
+      "fixed_version": "2.9.10.4",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0359,
+      "summary": "jackson-databind mishandles the interaction between serialization gadgets and typing"
+    },
+    {
+      "cve": "CVE-2020-11112",
+      "ecosystem": "Maven",
+      "package": "com.fasterxml.jackson.core:jackson-databind",
+      "fixed_version": "2.9.10.4",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0367,
+      "summary": "jackson-databind mishandles the interaction between serialization gadgets and typing"
+    },
+    {
+      "cve": "CVE-2020-11619",
+      "ecosystem": "Maven",
+      "package": "com.fasterxml.jackson.core:jackson-databind",
+      "fixed_version": "2.9.10.4",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0371,
+      "summary": "jackson-databind mishandles the interaction between serialization gadgets and typing"
+    },
+    {
+      "cve": "CVE-2020-14343",
+      "ecosystem": "PyPI",
+      "package": "pyyaml",
+      "fixed_version": "5.4",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0624,
+      "summary": "A vulnerability was discovered in the PyYAML library in versions before 5.4, where it is susceptible to arbitrary code execution when it processes untrusted YAML files through the full_load method or with the FullLoader loader. Applications"
+    },
+    {
+      "cve": "CVE-2020-15096",
+      "ecosystem": "npm",
+      "package": "electron",
+      "fixed_version": "8.2.4",
+      "severity": "Low",
+      "cisa_kev": false,
+      "epss": 0.0081,
+      "summary": "Context isolation bypass via Promise in Electron"
+    },
+    {
+      "cve": "CVE-2020-15174",
+      "ecosystem": "npm",
+      "package": "electron",
+      "fixed_version": "10.0.1",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0135,
+      "summary": "Unpreventable top-level navigation"
+    },
+    {
+      "cve": "CVE-2020-15215",
+      "ecosystem": "npm",
+      "package": "electron",
+      "fixed_version": "11.0.0-beta.6",
+      "severity": "Low",
+      "cisa_kev": false,
+      "epss": 0.0068,
+      "summary": "Context isolation bypass in Electron"
+    },
+    {
+      "cve": "CVE-2020-15522",
+      "ecosystem": "NuGet",
+      "package": "BouncyCastle",
+      "fixed_version": "1.8.7",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0152,
+      "summary": "Timing based private key exposure in Bouncy Castle"
+    },
+    {
+      "cve": "CVE-2020-1747",
+      "ecosystem": "PyPI",
+      "package": "pyyaml",
+      "fixed_version": "5.3.1",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0469,
+      "summary": "A vulnerability was discovered in the PyYAML library in versions before 5.3.1, where it is susceptible to arbitrary code execution when it processes untrusted YAML files through the full_load method or with the FullLoader loader. Applicatio"
+    },
+    {
+      "cve": "CVE-2020-25649",
+      "ecosystem": "Maven",
+      "package": "com.fasterxml.jackson.core:jackson-databind",
+      "fixed_version": "2.10.5.1",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.1781,
+      "summary": "XML External Entity (XXE) Injection in Jackson Databind"
+    },
+    {
+      "cve": "CVE-2020-25659",
+      "ecosystem": "PyPI",
+      "package": "cryptography",
+      "fixed_version": "3.2",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0246,
+      "summary": "RSA decryption vulnerable to Bleichenbacher timing vulnerability"
+    },
+    {
+      "cve": "CVE-2020-26137",
+      "ecosystem": "PyPI",
+      "package": "urllib3",
+      "fixed_version": "1.25.9",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0227,
+      "summary": "CRLF injection in urllib3"
+    },
+    {
+      "cve": "CVE-2020-28168",
+      "ecosystem": "npm",
+      "package": "axios",
+      "fixed_version": "0.21.1",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0236,
+      "summary": "Axios vulnerable to Server-Side Request Forgery"
+    },
+    {
+      "cve": "CVE-2020-28500",
+      "ecosystem": "npm",
+      "package": "lodash",
+      "fixed_version": "4.17.21",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0742,
+      "summary": "Regular Expression Denial of Service (ReDoS) in lodash"
+    },
+    {
+      "cve": "CVE-2020-35728",
+      "ecosystem": "Maven",
+      "package": "com.fasterxml.jackson.core:jackson-databind",
+      "fixed_version": "2.9.10.8",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.125,
+      "summary": "Serialization gadget exploit in jackson-databind"
+    },
+    {
+      "cve": "CVE-2020-36180",
+      "ecosystem": "Maven",
+      "package": "com.fasterxml.jackson.core:jackson-databind",
+      "fixed_version": "2.6.7.5",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0409,
+      "summary": "Unsafe Deserialization in jackson-databind"
+    },
+    {
+      "cve": "CVE-2020-36182",
+      "ecosystem": "Maven",
+      "package": "com.fasterxml.jackson.core:jackson-databind",
+      "fixed_version": "2.6.7.5",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0409,
+      "summary": "Unsafe Deserialization in jackson-databind"
+    },
+    {
+      "cve": "CVE-2020-36185",
+      "ecosystem": "Maven",
+      "package": "com.fasterxml.jackson.core:jackson-databind",
+      "fixed_version": "2.9.10.8",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0424,
+      "summary": "Unsafe Deserialization in jackson-databind"
+    },
+    {
+      "cve": "CVE-2020-36242",
+      "ecosystem": "PyPI",
+      "package": "cryptography",
+      "fixed_version": "3.3.2",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.068,
+      "summary": "PyCA Cryptography symmetrically encrypting large values can lead to integer overflow"
+    },
+    {
+      "cve": "CVE-2020-36518",
+      "ecosystem": "Maven",
+      "package": "com.fasterxml.jackson.core:jackson-databind",
+      "fixed_version": "2.12.6.1",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0486,
+      "summary": "Deeply nested json in jackson-databind"
+    },
+    {
+      "cve": "CVE-2020-7212",
+      "ecosystem": "PyPI",
+      "package": "urllib3",
+      "fixed_version": "1.25.8",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0337,
+      "summary": "Uncontrolled Resource Consumption in urllib3"
+    },
+    {
+      "cve": "CVE-2020-8203",
+      "ecosystem": "npm",
+      "package": "lodash",
+      "fixed_version": "4.17.19",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0521,
+      "summary": "Prototype Pollution in lodash"
+    },
+    {
+      "cve": "CVE-2020-8840",
+      "ecosystem": "Maven",
+      "package": "com.fasterxml.jackson.core:jackson-databind",
+      "fixed_version": "2.9.10.3",
+      "severity": "Critical",
+      "cisa_kev": false,
+      "epss": 0.2659,
+      "summary": "Deserialization of Untrusted Data in jackson-databind"
+    },
+    {
+      "cve": "CVE-2020-9488",
+      "ecosystem": "Maven",
+      "package": "org.apache.logging.log4j:log4j-core",
+      "fixed_version": "2.3.2",
+      "severity": "Low",
+      "cisa_kev": false,
+      "epss": 0.0904,
+      "summary": "Improper validation of certificate with host mismatch in Apache Log4j SMTP appender"
+    },
+    {
+      "cve": "CVE-2020-9546",
+      "ecosystem": "Maven",
+      "package": "com.fasterxml.jackson.core:jackson-databind",
+      "fixed_version": "2.9.10.4",
+      "severity": "Critical",
+      "cisa_kev": false,
+      "epss": 0.0424,
+      "summary": "jackson-databind mishandles the interaction between serialization gadgets and typing"
+    },
+    {
+      "cve": "CVE-2021-20190",
+      "ecosystem": "Maven",
+      "package": "com.fasterxml.jackson.core:jackson-databind",
+      "fixed_version": "2.6.7.5",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0762,
+      "summary": "Deserialization of untrusted data in jackson-databind"
+    },
+    {
+      "cve": "CVE-2021-22060",
+      "ecosystem": "Maven",
+      "package": "org.springframework:spring-core",
+      "fixed_version": "5.2.19",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0092,
+      "summary": "Log entry injection in Spring Framework"
+    },
+    {
+      "cve": "CVE-2021-22096",
+      "ecosystem": "Maven",
+      "package": "org.springframework:spring-core",
+      "fixed_version": "5.3.11",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0135,
+      "summary": "Improper Output Neutralization for Logs in Spring Framework"
+    },
+    {
+      "cve": "CVE-2021-23337",
+      "ecosystem": "npm",
+      "package": "lodash",
+      "fixed_version": "4.17.21",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.2061,
+      "summary": "Command Injection in lodash"
+    },
+    {
+      "cve": "CVE-2021-27293",
+      "ecosystem": "NuGet",
+      "package": "RestSharp",
+      "fixed_version": "106.11.8-alpha.0.13",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0151,
+      "summary": "Incorrect Regular Expression in RestSharp"
+    },
+    {
+      "cve": "CVE-2021-28363",
+      "ecosystem": "PyPI",
+      "package": "urllib3",
+      "fixed_version": "1.26.4",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0202,
+      "summary": "Using default SSLContext for HTTPS requests in an HTTPS proxy doesn't verify certificate hostname for proxy connection"
+    },
+    {
+      "cve": "CVE-2021-32640",
+      "ecosystem": "npm",
+      "package": "ws",
+      "fixed_version": "5.2.3",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.029,
+      "summary": "ReDoS in Sec-Websocket-Protocol header"
+    },
+    {
+      "cve": "CVE-2021-33503",
+      "ecosystem": "PyPI",
+      "package": "urllib3",
+      "fixed_version": "1.26.5",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0286,
+      "summary": "Catastrophic backtracking in URL authority parser when passed URL containing many @ characters"
+    },
+    {
+      "cve": "CVE-2021-3749",
+      "ecosystem": "npm",
+      "package": "axios",
+      "fixed_version": "0.21.2",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0852,
+      "summary": "axios Inefficient Regular Expression Complexity vulnerability"
+    },
+    {
+      "cve": "CVE-2021-44832",
+      "ecosystem": "Maven",
+      "package": "org.apache.logging.log4j:log4j-core",
+      "fixed_version": "2.0.14",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.9791,
+      "summary": "Improper Input Validation and Injection in Apache Log4j2"
+    },
+    {
+      "cve": "CVE-2021-45105",
+      "ecosystem": "Maven",
+      "package": "org.apache.logging.log4j:log4j-core",
+      "fixed_version": "2.0.13",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 1.0,
+      "summary": "Apache Log4j2 vulnerable to Improper Input Validation and Uncontrolled Recursion"
+    },
+    {
+      "cve": "CVE-2021-46877",
+      "ecosystem": "Maven",
+      "package": "com.fasterxml.jackson.core:jackson-databind",
+      "fixed_version": "2.13.1",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0112,
+      "summary": "jackson-databind possible Denial of Service if using JDK serialization to serialize JsonNode"
+    },
+    {
+      "cve": "CVE-2022-21718",
+      "ecosystem": "npm",
+      "package": "electron",
+      "fixed_version": "17.0.0-alpha.6",
+      "severity": "Low",
+      "cisa_kev": false,
+      "epss": 0.01,
+      "summary": "Renderers can obtain access to random bluetooth device without permission in Electron"
+    },
+    {
+      "cve": "CVE-2022-23539",
+      "ecosystem": "npm",
+      "package": "jsonwebtoken",
+      "fixed_version": "9.0.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0057,
+      "summary": "jsonwebtoken unrestricted key type could lead to legacy keys usage "
+    },
+    {
+      "cve": "CVE-2022-23540",
+      "ecosystem": "npm",
+      "package": "jsonwebtoken",
+      "fixed_version": "9.0.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0059,
+      "summary": "jsonwebtoken vulnerable to signature validation bypass due to insecure default algorithm in jwt.verify()"
+    },
+    {
+      "cve": "CVE-2022-23541",
+      "ecosystem": "npm",
+      "package": "jsonwebtoken",
+      "fixed_version": "9.0.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.008,
+      "summary": "jsonwebtoken's insecure implementation of key retrieval function could lead to Forgeable Public/Private Tokens from RSA to HMAC"
+    },
+    {
+      "cve": "CVE-2022-29257",
+      "ecosystem": "npm",
+      "package": "electron",
+      "fixed_version": "18.0.0-beta.6",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0093,
+      "summary": "AutoUpdater module fails to validate certain nested components of the bundle"
+    },
+    {
+      "cve": "CVE-2022-41064",
+      "ecosystem": "NuGet",
+      "package": "Microsoft.Data.SqlClient",
+      "fixed_version": "2.1.2",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0104,
+      "summary": ".NET Information Disclosure Vulnerability"
+    },
+    {
+      "cve": "CVE-2023-0286",
+      "ecosystem": "PyPI",
+      "package": "cryptography",
+      "fixed_version": "300.0.12",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0522,
+      "summary": "Vulnerable OpenSSL included in cryptography wheels"
+    },
+    {
+      "cve": "CVE-2023-23931",
+      "ecosystem": "PyPI",
+      "package": "cryptography",
+      "fixed_version": "39.0.1",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0133,
+      "summary": "Cipher.update_into can corrupt memory if passed an immutable python object as the outbuf"
+    },
+    {
+      "cve": "CVE-2023-26464",
+      "ecosystem": "Maven",
+      "package": "org.apache.logging.log4j:log4j-core",
+      "fixed_version": "2.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.022,
+      "summary": "Apache Log4j 1.x (EOL) allows Denial of Service (DoS)"
+    },
+    {
+      "cve": "CVE-2023-32681",
+      "ecosystem": "PyPI",
+      "package": "requests",
+      "fixed_version": "2.31.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0257,
+      "summary": "Requests is a HTTP library. Since Requests 2.3.0, Requests has been leaking Proxy-Authorization headers to destination servers when redirected to an HTTPS endpoint. This is a product of how we use `rebuild_proxies` to reattach the `Proxy-Au"
+    },
+    {
+      "cve": "CVE-2023-38325",
+      "ecosystem": "PyPI",
+      "package": "cryptography",
+      "fixed_version": "41.0.2",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0092,
+      "summary": "cryptography mishandles SSH certificates"
+    },
+    {
+      "cve": "CVE-2023-39956",
+      "ecosystem": "npm",
+      "package": "electron",
+      "fixed_version": "26.0.0-beta.13",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0046,
+      "summary": "Electron vulnerable to out-of-package code execution when launched with arbitrary cwd"
+    },
+    {
+      "cve": "CVE-2023-43804",
+      "ecosystem": "PyPI",
+      "package": "urllib3",
+      "fixed_version": "1.26.17",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0152,
+      "summary": "`Cookie` HTTP header isn't stripped on cross-origin redirects"
+    },
+    {
+      "cve": "CVE-2023-44402",
+      "ecosystem": "npm",
+      "package": "electron",
+      "fixed_version": "27.0.0-alpha.7",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0026,
+      "summary": "ASAR Integrity bypass via filetype confusion in electron"
+    },
+    {
+      "cve": "CVE-2023-45803",
+      "ecosystem": "PyPI",
+      "package": "urllib3",
+      "fixed_version": "1.26.18",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0063,
+      "summary": "urllib3's request body not stripped after redirect from 303 status changes request method to GET"
+    },
+    {
+      "cve": "CVE-2023-49083",
+      "ecosystem": "PyPI",
+      "package": "cryptography",
+      "fixed_version": "41.0.6",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0116,
+      "summary": "cryptography vulnerable to NULL-dereference when loading PKCS7 certificates"
+    },
+    {
+      "cve": "CVE-2023-50782",
+      "ecosystem": "PyPI",
+      "package": "cryptography",
+      "fixed_version": "42.0.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0124,
+      "summary": "Python Cryptography package vulnerable to Bleichenbacher timing oracle attack"
+    },
+    {
+      "cve": "CVE-2024-0056",
+      "ecosystem": "NuGet",
+      "package": "Microsoft.Data.SqlClient",
+      "fixed_version": "5.1.3",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0086,
+      "summary": "Microsoft.Data.SqlClient and System.Data.SqlClient vulnerable to SQL Data Provider Security Feature Bypass "
+    },
+    {
+      "cve": "CVE-2024-0727",
+      "ecosystem": "PyPI",
+      "package": "cryptography",
+      "fixed_version": "42.0.2",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0341,
+      "summary": "Null pointer dereference in PKCS12 parsing"
+    },
+    {
+      "cve": "CVE-2024-10491",
+      "ecosystem": "npm",
+      "package": "express",
+      "fixed_version": "4.0.0-rc1",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0065,
+      "summary": "Express ressource injection"
+    },
+    {
+      "cve": "CVE-2024-12797",
+      "ecosystem": "PyPI",
+      "package": "cryptography",
+      "fixed_version": "44.0.1",
+      "severity": "Low",
+      "cisa_kev": false,
+      "epss": 0.0131,
+      "summary": "Vulnerable OpenSSL included in cryptography wheels"
+    },
+    {
+      "cve": "CVE-2024-21907",
+      "ecosystem": "NuGet",
+      "package": "Newtonsoft.Json",
+      "fixed_version": "13.0.1",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0247,
+      "summary": "Improper Handling of Exceptional Conditions in Newtonsoft.Json"
+    },
+    {
+      "cve": "CVE-2024-22233",
+      "ecosystem": "Maven",
+      "package": "org.springframework:spring-core",
+      "fixed_version": "6.0.16",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0123,
+      "summary": "Spring Framework server Web DoS Vulnerability"
+    },
+    {
+      "cve": "CVE-2024-26130",
+      "ecosystem": "PyPI",
+      "package": "cryptography",
+      "fixed_version": "42.0.4",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0167,
+      "summary": "cryptography NULL pointer dereference with pkcs12.serialize_key_and_certificates when called with a non-matching certificate and private key and an hmac_hash override"
+    },
+    {
+      "cve": "CVE-2024-29041",
+      "ecosystem": "npm",
+      "package": "express",
+      "fixed_version": "5.0.0-beta.3",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0092,
+      "summary": "Express.js Open Redirect in malformed URLs"
+    },
+    {
+      "cve": "CVE-2024-29857",
+      "ecosystem": "NuGet",
+      "package": "BouncyCastle",
+      "fixed_version": "2.3.1",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0122,
+      "summary": "Bouncy Castle certificate parsing issues cause high CPU usage during parameter evaluation."
+    },
+    {
+      "cve": "CVE-2024-30105",
+      "ecosystem": "NuGet",
+      "package": "System.Text.Json",
+      "fixed_version": "8.0.4",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0262,
+      "summary": "Microsoft Security Advisory CVE-2024-30105 | .NET Denial of Service Vulnerability"
+    },
+    {
+      "cve": "CVE-2024-30171",
+      "ecosystem": "NuGet",
+      "package": "BouncyCastle",
+      "fixed_version": "2.3.1",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0114,
+      "summary": "Bouncy Castle affected by timing side-channel for RSA key exchange (\"The Marvin Attack\")"
+    },
+    {
+      "cve": "CVE-2024-30172",
+      "ecosystem": "NuGet",
+      "package": "BouncyCastle",
+      "fixed_version": "2.3.1",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0101,
+      "summary": "Bouncy Castle crafted signature and public key can be used to trigger an infinite loop"
+    },
+    {
+      "cve": "CVE-2024-35195",
+      "ecosystem": "PyPI",
+      "package": "requests",
+      "fixed_version": "2.32.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0038,
+      "summary": "Requests `Session` object does not verify requests after making first request with verify=False"
+    },
+    {
+      "cve": "CVE-2024-37890",
+      "ecosystem": "npm",
+      "package": "ws",
+      "fixed_version": "8.17.1",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0159,
+      "summary": "ws affected by a DoS when handling a request with many HTTP headers"
+    },
+    {
+      "cve": "CVE-2024-37891",
+      "ecosystem": "PyPI",
+      "package": "urllib3",
+      "fixed_version": "2.2.2",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0147,
+      "summary": "urllib3's Proxy-Authorization request header isn't stripped during cross-origin redirects"
+    },
+    {
+      "cve": "CVE-2024-39338",
+      "ecosystem": "npm",
+      "package": "axios",
+      "fixed_version": "1.7.4",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0079,
+      "summary": "Server-Side Request Forgery in axios"
+    },
+    {
+      "cve": "CVE-2024-43485",
+      "ecosystem": "NuGet",
+      "package": "System.Text.Json",
+      "fixed_version": "6.0.10",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0262,
+      "summary": "Microsoft Security Advisory CVE-2024-43485 | .NET Denial of Service Vulnerability"
+    },
+    {
+      "cve": "CVE-2024-43796",
+      "ecosystem": "npm",
+      "package": "express",
+      "fixed_version": "5.0.0",
+      "severity": "Low",
+      "cisa_kev": false,
+      "epss": 0.0063,
+      "summary": "express vulnerable to XSS via response.redirect()"
+    },
+    {
+      "cve": "CVE-2024-45302",
+      "ecosystem": "NuGet",
+      "package": "RestSharp",
+      "fixed_version": "112.0.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0054,
+      "summary": "CRLF Injection in RestSharp's `RestRequest.AddHeader` method"
+    },
+    {
+      "cve": "CVE-2024-46993",
+      "ecosystem": "npm",
+      "package": "electron",
+      "fixed_version": "30.0.3",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0023,
+      "summary": "Electron vulnerable to Heap Buffer Overflow in NativeImage"
+    },
+    {
+      "cve": "CVE-2024-47081",
+      "ecosystem": "PyPI",
+      "package": "requests",
+      "fixed_version": "2.32.4",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0131,
+      "summary": "Requests vulnerable to .netrc credentials leak via malicious URLs"
+    },
+    {
+      "cve": "CVE-2024-9266",
+      "ecosystem": "npm",
+      "package": "express",
+      "fixed_version": "4.0.0-rc1",
+      "severity": "Low",
+      "cisa_kev": false,
+      "epss": 0.0066,
+      "summary": "Express Open Redirect vulnerability"
+    },
+    {
+      "cve": "CVE-2025-13465",
+      "ecosystem": "npm",
+      "package": "lodash",
+      "fixed_version": "4.18.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0345,
+      "summary": "Lodash has Prototype Pollution Vulnerability in `_.unset`, `_.omit`, and `_.pullAt` functions"
+    },
+    {
+      "cve": "CVE-2025-41249",
+      "ecosystem": "Maven",
+      "package": "org.springframework:spring-core",
+      "fixed_version": "6.2.11",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0059,
+      "summary": "Spring Framework annotation detection mechanism may result in improper authorization"
+    },
+    {
+      "cve": "CVE-2025-50181",
+      "ecosystem": "PyPI",
+      "package": "urllib3",
+      "fixed_version": "2.5.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0058,
+      "summary": "urllib3 redirects are not disabled when retries are disabled on PoolManager instantiation"
+    },
+    {
+      "cve": "CVE-2025-50182",
+      "ecosystem": "PyPI",
+      "package": "urllib3",
+      "fixed_version": "2.5.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0053,
+      "summary": "urllib3 does not control redirects in browsers and Node.js"
+    },
+    {
+      "cve": "CVE-2025-58754",
+      "ecosystem": "npm",
+      "package": "axios",
+      "fixed_version": "0.30.2",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0143,
+      "summary": "Axios is vulnerable to DoS attack through lack of data size check"
+    },
+    {
+      "cve": "CVE-2025-62718",
+      "ecosystem": "npm",
+      "package": "axios",
+      "fixed_version": "0.31.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0112,
+      "summary": "Axios has a NO_PROXY Hostname Normalization Bypass that Leads to SSRF"
+    },
+    {
+      "cve": "CVE-2025-66418",
+      "ecosystem": "PyPI",
+      "package": "urllib3",
+      "fixed_version": "2.6.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0076,
+      "summary": "urllib3 allows an unbounded number of links in the decompression chain"
+    },
+    {
+      "cve": "CVE-2025-66471",
+      "ecosystem": "PyPI",
+      "package": "urllib3",
+      "fixed_version": "2.6.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0076,
+      "summary": "urllib3 streaming API improperly handles highly compressed data"
+    },
+    {
+      "cve": "CVE-2025-68161",
+      "ecosystem": "Maven",
+      "package": "org.apache.logging.log4j:log4j-core",
+      "fixed_version": "2.25.3",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0079,
+      "summary": "Apache Log4j does not verify the TLS hostname in its Socket Appender"
+    },
+    {
+      "cve": "CVE-2026-101898",
+      "ecosystem": "npm",
+      "package": "axios",
+      "fixed_version": "1.20.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0057,
+      "summary": "Axios: HTTP/2 adapter bypasses configured DNS lookup and proxy controls"
+    },
+    {
+      "cve": "CVE-2026-101899",
+      "ecosystem": "npm",
+      "package": "axios",
+      "fixed_version": "1.20.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0055,
+      "summary": "Axios: CIDR-form NO_PROXY entries are ignored, causing proxy exclusion bypass for internal IP ranges"
+    },
+    {
+      "cve": "CVE-2026-101900",
+      "ecosystem": "npm",
+      "package": "axios",
+      "fixed_version": "1.20.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0059,
+      "summary": "Axios: Fetch Adapter Header Injection via Inherited FormData getHeaders"
+    },
+    {
+      "cve": "CVE-2026-101901",
+      "ecosystem": "npm",
+      "package": "axios",
+      "fixed_version": "1.20.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0052,
+      "summary": "Axios: Denial of Service via Unhandled 'error' Event in HTTP/2 ClientHttp2Session Initialization"
+    },
+    {
+      "cve": "CVE-2026-101902",
+      "ecosystem": "npm",
+      "package": "axios",
+      "fixed_version": "1.20.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0057,
+      "summary": "Axios: Prototype-Pollution Gadget in the Default Instance Allows Inherited Object.prototype.method to Override HTTP Method"
+    },
+    {
+      "cve": "CVE-2026-101903",
+      "ecosystem": "npm",
+      "package": "axios",
+      "fixed_version": "1.20.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0052,
+      "summary": "Axios: ReDoS in fromDataURI data: URL parser freezes the Node event loop (DoS)"
+    },
+    {
+      "cve": "CVE-2026-113796",
+      "ecosystem": "npm",
+      "package": "electron",
+      "fixed_version": "42.11.3",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0022,
+      "summary": "Electron: SameSite cookie restrictions are not applied to windows opened from links"
+    },
+    {
+      "cve": "CVE-2026-113797",
+      "ecosystem": "npm",
+      "package": "electron",
+      "fixed_version": "42.11.1",
+      "severity": "Low",
+      "cisa_kev": false,
+      "epss": 0.0048,
+      "summary": "Electron: Extension tabs.query returns tab URLs and titles without the tabs permission"
+    },
+    {
+      "cve": "CVE-2026-114122",
+      "ecosystem": "npm",
+      "package": "electron",
+      "fixed_version": "45.0.0-alpha.9",
+      "severity": "Low",
+      "cisa_kev": false,
+      "epss": 0.0018,
+      "summary": "Electron: Frame subscription trusts GPU-supplied frame geometry"
+    },
+    {
+      "cve": "CVE-2026-120796",
+      "ecosystem": "NuGet",
+      "package": "System.Text.Json",
+      "fixed_version": "11.0.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0108,
+      "summary": "Microsoft Security Advisory CVE-2026-120796 - .NET Denial of Service Vulnerability"
+    },
+    {
+      "cve": "CVE-2026-21441",
+      "ecosystem": "PyPI",
+      "package": "urllib3",
+      "fixed_version": "2.6.3",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.039,
+      "summary": "Decompression-bomb safeguards bypassed when following HTTP redirects (streaming API)"
+    },
+    {
+      "cve": "CVE-2026-25639",
+      "ecosystem": "npm",
+      "package": "axios",
+      "fixed_version": "0.30.3",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0212,
+      "summary": "Axios is Vulnerable to Denial of Service via __proto__ Key in mergeConfig"
+    },
+    {
+      "cve": "CVE-2026-25645",
+      "ecosystem": "PyPI",
+      "package": "requests",
+      "fixed_version": "2.33.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0022,
+      "summary": "Requests is a HTTP library. Prior to version 2.33.0, the `requests.utils.extract_zipped_paths()` utility function uses a predictable filename when extracting files from zip archives into the system temporary directory. If the target file al"
+    },
+    {
+      "cve": "CVE-2026-26007",
+      "ecosystem": "PyPI",
+      "package": "cryptography",
+      "fixed_version": "46.0.5",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0042,
+      "summary": "cryptography Vulnerable to a Subgroup Attack Due to Missing Subgroup Validation for SECT Curves"
+    },
+    {
+      "cve": "CVE-2026-2950",
+      "ecosystem": "npm",
+      "package": "lodash",
+      "fixed_version": "4.18.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0052,
+      "summary": "lodash vulnerable to prototype pollution via array-path bypass in `_.unset`, `_.omit`, and `_.pullAt"
+    },
+    {
+      "cve": "CVE-2026-34073",
+      "ecosystem": "PyPI",
+      "package": "cryptography",
+      "fixed_version": "46.0.6",
+      "severity": "Low",
+      "cisa_kev": false,
+      "epss": 0.0021,
+      "summary": "cryptography has incomplete DNS name constraint enforcement on peer names"
+    },
+    {
+      "cve": "CVE-2026-34477",
+      "ecosystem": "Maven",
+      "package": "org.apache.logging.log4j:log4j-core",
+      "fixed_version": "2.25.4",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0052,
+      "summary": "Apache Log4j Core: `verifyHostName` attribute silently ignored in TLS configuration"
+    },
+    {
+      "cve": "CVE-2026-34478",
+      "ecosystem": "Maven",
+      "package": "org.apache.logging.log4j:log4j-core",
+      "fixed_version": "2.25.4",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0123,
+      "summary": "Apache Log4j Core: log injection in `Rfc5424Layout` due to silent configuration incompatibility"
+    },
+    {
+      "cve": "CVE-2026-34479",
+      "ecosystem": "Maven",
+      "package": "org.apache.logging.log4j:log4j-core",
+      "fixed_version": "2.25.4",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0095,
+      "summary": "Apache Log4j 1 to Log4j 2 bridge: silent log event loss in Log4j1XmlLayout due to unescaped XML 1.0 forbidden characters"
+    },
+    {
+      "cve": "CVE-2026-34480",
+      "ecosystem": "Maven",
+      "package": "org.apache.logging.log4j:log4j-core",
+      "fixed_version": "2.25.4",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0123,
+      "summary": "Apache Log4j Core: Silent log event loss in XmlLayout due to unescaped XML 1.0 forbidden characters"
+    },
+    {
+      "cve": "CVE-2026-34764",
+      "ecosystem": "npm",
+      "package": "electron",
+      "fixed_version": "42.0.0-alpha.5",
+      "severity": "Low",
+      "cisa_kev": false,
+      "epss": 0.0015,
+      "summary": "Electron: Use-after-free in offscreen shared texture release() callback"
+    },
+    {
+      "cve": "CVE-2026-34766",
+      "ecosystem": "npm",
+      "package": "electron",
+      "fixed_version": "41.0.0-beta.8",
+      "severity": "Low",
+      "cisa_kev": false,
+      "epss": 0.0019,
+      "summary": "Electron: USB device selection not validated against filtered device list"
+    },
+    {
+      "cve": "CVE-2026-34767",
+      "ecosystem": "npm",
+      "package": "electron",
+      "fixed_version": "41.0.3",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0027,
+      "summary": "Electron: HTTP Response Header Injection in custom protocol handlers and webRequest"
+    },
+    {
+      "cve": "CVE-2026-34771",
+      "ecosystem": "npm",
+      "package": "electron",
+      "fixed_version": "41.0.0-beta.8",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.004,
+      "summary": "Electron: Use-after-free in WebContents fullscreen, pointer-lock, and keyboard-lock permission callbacks"
+    },
+    {
+      "cve": "CVE-2026-34774",
+      "ecosystem": "npm",
+      "package": "electron",
+      "fixed_version": "41.0.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0059,
+      "summary": "Electron: Use-after-free in offscreen child window paint callback"
+    },
+    {
+      "cve": "CVE-2026-34776",
+      "ecosystem": "npm",
+      "package": "electron",
+      "fixed_version": "41.0.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0025,
+      "summary": "Electron: Out-of-bounds read in second-instance IPC on macOS and Linux"
+    },
+    {
+      "cve": "CVE-2026-34779",
+      "ecosystem": "npm",
+      "package": "electron",
+      "fixed_version": "41.0.0-beta.8",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0019,
+      "summary": "Electron: AppleScript injection in app.moveToApplicationsFolder on macOS"
+    },
+    {
+      "cve": "CVE-2026-39892",
+      "ecosystem": "PyPI",
+      "package": "cryptography",
+      "fixed_version": "46.0.7",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.008,
+      "summary": "Cryptography vulnerable to buffer overflow if non-contiguous buffers were passed to APIs"
+    },
+    {
+      "cve": "CVE-2026-40021",
+      "ecosystem": "NuGet",
+      "package": "log4net",
+      "fixed_version": "3.3.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0102,
+      "summary": "Apache Log4net: Silent log event loss in XmlLayout and XmlLayoutSchemaLog4J due to unescaped XML 1.0 forbidden characters"
+    },
+    {
+      "cve": "CVE-2026-41848",
+      "ecosystem": "Maven",
+      "package": "org.springframework:spring-core",
+      "fixed_version": "6.2.19",
+      "severity": "Low",
+      "cisa_kev": false,
+      "epss": 0.004,
+      "summary": "Spring Framework Denial of Service via AntPathMatcher"
+    },
+    {
+      "cve": "CVE-2026-42034",
+      "ecosystem": "npm",
+      "package": "axios",
+      "fixed_version": "0.31.1",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.005,
+      "summary": "Axios' HTTP adapter-streamed uploads bypass maxBodyLength when maxRedirects: 0"
+    },
+    {
+      "cve": "CVE-2026-42035",
+      "ecosystem": "npm",
+      "package": "axios",
+      "fixed_version": "0.31.1",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0042,
+      "summary": "Axios: Header Injection via Prototype Pollution"
+    },
+    {
+      "cve": "CVE-2026-42037",
+      "ecosystem": "npm",
+      "package": "axios",
+      "fixed_version": "1.15.1",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0035,
+      "summary": "Axios: CRLF Injection in multipart/form-data body via unsanitized blob.type in formDataToStream"
+    },
+    {
+      "cve": "CVE-2026-42039",
+      "ecosystem": "npm",
+      "package": "axios",
+      "fixed_version": "0.31.1",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.01,
+      "summary": "Axios: unbounded recursion in toFormData causes DoS via deeply nested request data"
+    },
+    {
+      "cve": "CVE-2026-42044",
+      "ecosystem": "npm",
+      "package": "axios",
+      "fixed_version": "1.15.2",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0113,
+      "summary": "Axios: Invisible JSON Response Tampering via Prototype Pollution Gadget in `parseReviver`"
+    },
+    {
+      "cve": "CVE-2026-44431",
+      "ecosystem": "PyPI",
+      "package": "urllib3",
+      "fixed_version": "2.7.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0034,
+      "summary": "urllib3: Sensitive headers forwarded across origins in proxied low-level redirects"
+    },
+    {
+      "cve": "CVE-2026-44432",
+      "ecosystem": "PyPI",
+      "package": "urllib3",
+      "fixed_version": "2.7.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0088,
+      "summary": "urllib3: Decompression-bomb safeguards bypassed in parts of the streaming API"
+    },
+    {
+      "cve": "CVE-2026-44488",
+      "ecosystem": "npm",
+      "package": "axios",
+      "fixed_version": "1.16.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0093,
+      "summary": "Allocation of Resources Without Limits or Throttling in Axios"
+    },
+    {
+      "cve": "CVE-2026-44489",
+      "ecosystem": "npm",
+      "package": "axios",
+      "fixed_version": "1.16.0",
+      "severity": "Low",
+      "cisa_kev": false,
+      "epss": 0.0031,
+      "summary": "Axios has a Patch Bypass: Proxy-Authorization Header Injection via Prototype Pollution \u2014 Incomplete Null-Prototype Fix"
+    },
+    {
+      "cve": "CVE-2026-44490",
+      "ecosystem": "npm",
+      "package": "axios",
+      "fixed_version": "0.32.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.004,
+      "summary": "axios has DoS & Header Injection via Prototype Pollution Read-Side Gadgets in axios merge functions"
+    },
+    {
+      "cve": "CVE-2026-44494",
+      "ecosystem": "npm",
+      "package": "axios",
+      "fixed_version": "1.16.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0097,
+      "summary": "axios Vulnerable to Full Man-in-the-Middle via Prototype Pollution Gadget in `config.proxy`"
+    },
+    {
+      "cve": "CVE-2026-44495",
+      "ecosystem": "npm",
+      "package": "axios",
+      "fixed_version": "0.31.1",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0104,
+      "summary": "axios Vulnerable to Credential Theft and Response Hijacking via Prototype Pollution Gadget in Config Merge"
+    },
+    {
+      "cve": "CVE-2026-45736",
+      "ecosystem": "npm",
+      "package": "ws",
+      "fixed_version": "8.20.1",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0067,
+      "summary": "ws: Uninitialized memory disclosure"
+    },
+    {
+      "cve": "CVE-2026-4800",
+      "ecosystem": "npm",
+      "package": "lodash",
+      "fixed_version": "4.18.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0306,
+      "summary": "lodash vulnerable to Code Injection via `_.template` imports key names"
+    },
+    {
+      "cve": "CVE-2026-48779",
+      "ecosystem": "npm",
+      "package": "ws",
+      "fixed_version": "8.21.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0167,
+      "summary": "ws: Memory exhaustion DoS from tiny fragments and data chunks"
+    },
+    {
+      "cve": "CVE-2026-50193",
+      "ecosystem": "Maven",
+      "package": "com.fasterxml.jackson.core:jackson-databind",
+      "fixed_version": "2.14.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0062,
+      "summary": "jackson-databind: Deeply nested JsonNode throws StackOverflowError for toString()"
+    },
+    {
+      "cve": "CVE-2026-54515",
+      "ecosystem": "Maven",
+      "package": "com.fasterxml.jackson.core:jackson-databind",
+      "fixed_version": "2.22.1",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0044,
+      "summary": "jackson-databind has case-insensitive deserialization bypasses per-property @JsonIgnoreProperties"
+    },
+    {
+      "cve": "CVE-2026-54517",
+      "ecosystem": "Maven",
+      "package": "com.fasterxml.jackson.core:jackson-databind",
+      "fixed_version": "3.1.4",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0038,
+      "summary": "jackson-databind has @JsonView bypass for setterless creator properties"
+    },
+    {
+      "cve": "CVE-2026-59888",
+      "ecosystem": "Maven",
+      "package": "com.fasterxml.jackson.core:jackson-databind",
+      "fixed_version": "3.1.4",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0042,
+      "summary": "jackson-databind: @JsonIgnore on a Record property is bypassed with a PropertyNamingStrategy"
+    },
+    {
+      "cve": "CVE-2026-59889",
+      "ecosystem": "Maven",
+      "package": "com.fasterxml.jackson.core:jackson-databind",
+      "fixed_version": "3.2.1",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0039,
+      "summary": "jackson-databind: @JsonView bypassed for @JsonUnwrapped container properties on deserialization"
+    },
+    {
+      "cve": "CVE-2026-67313",
+      "ecosystem": "npm",
+      "package": "axios",
+      "fixed_version": "1.18.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0052,
+      "summary": "Axios: Excessive recursion in formDataToJSON can cause denial of service"
+    },
+    {
+      "cve": "CVE-2026-67319",
+      "ecosystem": "npm",
+      "package": "axios",
+      "fixed_version": "1.18.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0032,
+      "summary": "Axios: Nested axios option objects can consume polluted prototype values"
+    },
+    {
+      "cve": "CVE-2026-69247",
+      "ecosystem": "PyPI",
+      "package": "cryptography",
+      "fixed_version": "50.0.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0027,
+      "summary": "cryptography: PKCS#7 EnvelopedData decryption exposes a Bleichenbacher oracle through distinguishable errors and timing"
+    },
+    {
+      "cve": "CVE-2026-69248",
+      "ecosystem": "PyPI",
+      "package": "cryptography",
+      "fixed_version": "49.0.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0031,
+      "summary": "python-cryptography verifier accepts wildcard DNS names allowing escape from permittedSubtrees"
+    },
+    {
+      "cve": "CVE-2026-69249",
+      "ecosystem": "PyPI",
+      "package": "cryptography",
+      "fixed_version": "49.0.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0026,
+      "summary": "python-cryptography: Duplicate self-signed intermediates can cause exponential path-building"
+    },
+    {
+      "cve": "CVE-2026-70603",
+      "ecosystem": "npm",
+      "package": "electron",
+      "fixed_version": "39.8.6",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0013,
+      "summary": "Electron: shell.openPath path validation bypass via embedded null byte"
+    },
+    {
+      "cve": "CVE-2026-70609",
+      "ecosystem": "npm",
+      "package": "electron",
+      "fixed_version": "42.0.0-beta.1",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0053,
+      "summary": "Electron: DevTools JavaScript Injection via Unsanitized Dock State Parameter"
+    },
+    {
+      "cve": "CVE-2026-97687",
+      "ecosystem": "PyPI",
+      "package": "urllib3",
+      "fixed_version": "2.8.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0029,
+      "summary": "urllib3: HTTPS proxy TLS configuration may be ignored or overridden"
+    },
+    {
+      "cve": "CVE-2026-97688",
+      "ecosystem": "PyPI",
+      "package": "urllib3",
+      "fixed_version": "2.8.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0051,
+      "summary": "urllib3: Chunked Deflate streaming can enter an infinite loop"
+    },
+    {
+      "cve": "CVE-2026-97689",
+      "ecosystem": "PyPI",
+      "package": "urllib3",
+      "fixed_version": "2.8.0",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0044,
+      "summary": "urllib3: HTTPResponse.stream()/read_chunked() buffers an unbounded chunk-size line into memory"
+    },
+    {
+      "cve": "GHSA-39hc-v87j-747x",
+      "ecosystem": "PyPI",
+      "package": "cryptography",
+      "fixed_version": "38.0.3",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0,
+      "summary": "Vulnerable OpenSSL included in cryptography wheels"
+    },
+    {
+      "cve": "GHSA-537c-gmf6-5ccf",
+      "ecosystem": "PyPI",
+      "package": "cryptography",
+      "fixed_version": "48.0.1",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0,
+      "summary": "Vulnerable OpenSSL included in cryptography wheels"
+    },
+    {
+      "cve": "GHSA-5cpq-8wj7-hf2v",
+      "ecosystem": "PyPI",
+      "package": "cryptography",
+      "fixed_version": "41.0.0",
+      "severity": "Low",
+      "cisa_kev": false,
+      "epss": 0.0,
+      "summary": "Vulnerable OpenSSL included in cryptography wheels"
+    },
+    {
+      "cve": "GHSA-5v72-xg48-5rpm",
+      "ecosystem": "npm",
+      "package": "ws",
+      "fixed_version": "3.3.1",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0,
+      "summary": "Denial of Service in ws"
+    },
+    {
+      "cve": "GHSA-h4gh-qq45-vh27",
+      "ecosystem": "PyPI",
+      "package": "cryptography",
+      "fixed_version": "43.0.1",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.0,
+      "summary": "pyca/cryptography has a vulnerable OpenSSL included in cryptography wheels"
+    },
+    {
+      "cve": "GHSA-jm77-qphf-c4w8",
+      "ecosystem": "PyPI",
+      "package": "cryptography",
+      "fixed_version": "41.0.3",
+      "severity": "Low",
+      "cisa_kev": false,
+      "epss": 0.0,
+      "summary": "pyca/cryptography's wheels include vulnerable OpenSSL"
+    },
+    {
+      "cve": "GHSA-v8gr-m533-ghj9",
+      "ecosystem": "PyPI",
+      "package": "cryptography",
+      "fixed_version": "41.0.4",
+      "severity": "Low",
+      "cisa_kev": false,
+      "epss": 0.0,
+      "summary": "Vulnerable OpenSSL included in cryptography wheels"
     }
   ]
 }
