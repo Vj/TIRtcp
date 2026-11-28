@@ -595,7 +595,7 @@ def collect_security_posture_extras() -> dict:
 
     # 1. Non-Microsoft Root CAs (detects enterprise/rogue MITM root certificates)
     ps_ca = (
-        "Get-ChildItem Cert:\LocalMachine\Root, Cert:\CurrentUser\Root -ErrorAction SilentlyContinue | "
+        r"Get-ChildItem Cert:\LocalMachine\Root, Cert:\CurrentUser\Root -ErrorAction SilentlyContinue | "
         "Where-Object { $_.Subject -notmatch 'Microsoft|DigiCert|VeriSign|GlobalSign|Baltimore|Entrust|Sectigo|thawte|GeoTrust|IdenTrust|ISRG' } | "
         "Select-Object -First 40 Subject, Thumbprint, NotAfter | ConvertTo-Json -Compress"
     )

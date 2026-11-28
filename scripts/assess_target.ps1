@@ -29,7 +29,7 @@ $ExeRunner = Join-Path $RepoRoot "dist\TIRtcp_win64\tirtcp.exe"
 $UseBinary = Test-Path $ExeRunner
 
 $CaptureDir = Join-Path $OutputDir "capture_$EngagementId"
-$StateDiffArg = @()
+$DynamicArgs = @()
 $RuntimeHookArg = @()
 
 if ($DynamicCapture -and (Test-Path $Target -PathType Leaf)) {
@@ -39,12 +39,16 @@ if ($DynamicCapture -and (Test-Path $Target -PathType Leaf)) {
     New-Item -ItemType Directory -Path $CaptureDir -Force | Out-Null
     Write-Host "[1/2] Running dynamic runtime capture for ${CaptureSeconds}s..." -ForegroundColor Cyan
     & (Join-Path $PSScriptRoot "dynamic_capture.ps1") -TargetExe $Target -DurationSeconds $CaptureSeconds -OutDir $CaptureDir
-    $DiffJson = Join-Path $CaptureDir "state_diff.json"
-    if (Test-Path $DiffJson) {
-        $StateDiffArg = @("--state-diff", $DiffJson)
-    }
-}
 
+    $DiffJson = Join-Path $CaptureDir "state_diff.json"
+    if (Test-Path $DiffJson) { $DynamicArgs += @("--state-diff", $DiffJson) }
+
+    $CapPcap = Join-Path $CaptureDir "capture.pcapng"
+    if (Test-Path $CapPcap) { $DynamicArgs += @("--pcap", $CapPcap) }
+
+    $HostEv = Join-Path $CaptureDir "host_evidence.json"
+    if (Test-Path $HostEv) { $DynamicArgs += @("--evidence", $HostEv) }
+}
 
 if ($FridaHook -and (Test-Path $Target -PathType Leaf)) {
     if (-not $Authorized) {
@@ -55,7 +59,7 @@ if ($FridaHook -and (Test-Path $Target -PathType Leaf)) {
     $FridaScript = Join-Path $PSScriptRoot "frida_hook_harness.py"
     if (Test-Path $FridaScript) {
         Write-Host "[*] Running Frida runtime API hook harness..." -ForegroundColor Cyan
-        python $FridaScript --target $Target --duration $CaptureSeconds --out $HookOut
+        python $FridaScript --target $Target --duration $CaptureSeconds --authorized --out $HookOut
         if (Test-Path $HookOut) {
             $RuntimeHookArg = @("--runtime-hooks", $HookOut)
         }
@@ -68,7 +72,7 @@ $CliArgs = @(
     "--engagement-id", $EngagementId,
     "--no-active-probe",
     "--output", $OutputDir
-) + $StateDiffArg + $RuntimeHookArg
+) + $DynamicArgs + $RuntimeHookArg
 
 if ($Authorized) {
     $CliArgs += "--authorized"
