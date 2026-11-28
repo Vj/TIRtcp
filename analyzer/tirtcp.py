@@ -28,7 +28,6 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
@@ -60,6 +59,7 @@ from analyzer.modules.static_audit.string_intel import scan_string_intel
 from analyzer.modules.static_audit.dotnet_intel import scan_dotnet_intel
 from analyzer.modules.static_audit.dotnet_bundle import extract_bundle
 from analyzer.core.coverage import build_coverage_finding
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from analyzer.modules.static_audit.browser_profile_audit import scan_browser_artifacts
 try:
     from analyzer.modules.static_audit.decompile_semgrep_audit import scan_decompiled_code
@@ -247,6 +247,89 @@ def _run_stage(
             )
         )
 
+def _run_stages_parallel(
+    stages: List[tuple[str, str, str, Callable[[], List[Finding]]]],
+    report: ScanReport,
+    timeout_sec: int = 120,
+    max_workers: int = 4,
+) -> None:
+    """Execute independent static stages concurrently while preserving deterministic report ordering."""
+    for label, _, _, _ in stages:
+        print(f"  -> {label}...")
+
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        future_entries = [
+            (label, check_id, asset, pool.submit(runner))
+            for label, check_id, asset, runner in stages
+        ]
+        for label, check_id, asset, fut in future_entries:
+            try:
+                results = fut.result(timeout=timeout_sec)
+                for finding in results:
+                    report.add_finding(finding)
+            except FuturesTimeoutError:
+                print(f"     [!] Timeout in {label} after {timeout_sec}s", file=sys.stderr)
+                report.add_finding(
+                    Finding(
+                        check_id=check_id,
+                        title=f"Module Execution Timeout ({label})",
+                        category="Orchestrator Telemetry",
+                        status=FindingStatus.TOOLING_GAP,
+                        severity=Severity.INFO,
+                        confidence=Confidence.LOW,
+                        affected_asset=asset,
+                        summary=f"Stage '{label}' exceeded {timeout_sec}s timeout and was isolated.",
+                        evidence={"timeout_seconds": timeout_sec},
+                    )
+                )
+            except Exception as exc:
+                print(f"     [!] Warning in {label}: {exc}", file=sys.stderr)
+                report.add_finding(
+                    Finding(
+                        check_id=check_id,
+                        title=f"Module Execution Error ({label})",
+                        category="Orchestrator Telemetry",
+                        status=FindingStatus.TOOLING_GAP,
+                        severity=Severity.INFO,
+                        confidence=Confidence.LOW,
+                        affected_asset=asset,
+                        summary=f"Stage '{label}' encountered an unexpected error and was isolated: {exc}",
+                        evidence={"exception_type": type(exc).__name__, "error": str(exc)},
+                    )
+                )
+        phase1_stages = [
+        (
+            "Binary exploit mitigations (PE/ELF/Mach-O)",
+            "TCP-BIN-001",
+            str(args.target),
+            lambda: scan_binary_hardening(args.target, mapper),
+        ),
+        (
+            "Digital signature, timestamp & revocation verification",
+            "TCP-BIN-002",
+            str(args.target),
+            lambda: scan_code_signatures(args.target, mapper),
+        ),
+        (
+            "Embedded DB strings, hardcoded secrets, PDB debug & PII log leaks",
+            "TCP-SEC-001",
+            str(args.target),
+            lambda: scan_secrets_db_and_debug(args.target, mapper, ctx=scan_ctx),
+        ),
+        (
+            "Hybrid SCA (Syft/Trivy/Grype + native C/C++ DLL fingerprinting)",
+            "TCP-SCA-001",
+            str(args.target),
+            lambda: scan_dependencies_and_native_libs(args.target, mapper),
+        ),
+        (
+            "Offline OSV / CISA KEV / EPSS package vulnerability matching",
+            "TCP-SCA-001",
+            str(args.target),
+            lambda: scan_offline_vulnerabilities(scan_ctx, mapper),
+        ),
+    ]
+    _run_stages_parallel(phase1_stages, report, timeout_sec=args.stage_timeout)
 
 def _validate_inputs(args: argparse.Namespace) -> Optional[Dict[str, Any]]:
     """Validate CLI file paths and load optional host_evidence.json before running modules."""

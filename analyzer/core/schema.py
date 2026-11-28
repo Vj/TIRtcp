@@ -571,6 +571,24 @@ class ScanReport:
   .kpi {{ background: #1e293b; padding: 14px; border-radius: 8px; text-align: center; }}
   .kpi .num {{ font-size: 24px; font-weight: 700; color: #f8fafc; }}
   .kpi .lbl {{ font-size: 12px; color: #94a3b8; margin-top: 4px; }}
+  <div class="filters" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px;">
+    <button class="fbtn active" onclick="filterCards('ALL', this)">All Findings</button>
+    <button class="fbtn" onclick="filterCards('Fail', this)">Failures</button>
+    <button class="fbtn" onclick="filterCards('Evidence of Retention', this)">Retention</button>
+    <button class="fbtn" onclick="filterCards('Manual Required', this)">Manual Required</button>
+    <button class="fbtn" onclick="filterCards('Observation', this)">Observations</button>
+    <button class="fbtn" onclick="filterCards('Tooling Gap', this)">Tooling Gaps</button>
+    <button class="fbtn" onclick="filterCards('Verified Pass', this)">Verified Pass</button>
+  </div>
+  <script>
+    function filterCards(status, btn) {{
+      document.querySelectorAll('.fbtn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.card').forEach(c => {{
+        c.style.display = (status === 'ALL' || c.dataset.status === status) ? 'block' : 'none';
+      }});
+    }}
+  </script>
   .card {{ background: #1e293b; border-radius: 8px; padding: 18px 20px; margin-bottom: 14px; border: 1px solid #334155; }}
   .card-header {{ display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 8px; }}
   .check-id {{ font-family: monospace; background: #334155; padding: 2px 6px; border-radius: 4px; font-size: 12px; margin-right: 8px; }}
@@ -617,6 +635,23 @@ class ScanReport:
 </body>
 </html>
 """
+
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize full scan report to a JSON-ready dictionary."""
+        return {
+            "tool": "TIRtcp",
+            "tool_version": self.tool_version,
+            "target_name": self.target_name,
+            "engagement_id": self.engagement_id,
+            "compliance_profile": self.compliance_profile,
+            "authorized_runtime": self.authorized_runtime,
+            "compliance_last_verified": self.compliance_last_verified,
+            "generated_at_utc": self.generated_at_utc,
+            "summary": self.summary_counts(),
+            "risk_summary": self.compute_risk_score() if hasattr(self, "compute_risk_score") else {},
+            "findings": [f.to_dict() for f in self.findings],
+        }
 
     def write_outputs(self, output_dir: Path, base_name: str = "tirtcp_report") -> Dict[str, Path]:
         output_dir.mkdir(parents=True, exist_ok=True)
