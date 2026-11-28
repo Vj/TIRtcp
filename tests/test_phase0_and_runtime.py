@@ -479,3 +479,108 @@ def test_spki_pin_detection_and_triage_rerender(tmp_path: Path) -> None:
     assert res["updated_findings"] == 1
     assert (tmp_path / "tirtcp_PinnedApp.html").exists()
     assert (tmp_path / "tirtcp_PinnedApp.sarif").exists()
+
+
+def test_container_qr_pairing_and_companion_apk(tmp_path: Path) -> None:
+    import zipfile
+    import scripts.create_demo_target as demo
+    from analyzer.modules.host_offline.container_audit import audit_containers
+    from analyzer.modules.static_audit.qr_pairing_web_audit import audit_qr_pairing_and_web_surface
+    from analyzer.modules.static_audit.companion_mobile_audit import audit_companion_mobile
+
+    # 1. Docker inspect fixture (root + docker.sock mount)
+    inspect_json = tmp_path / "docker_inspect.json"
+    inspect_json.write_text(
+        json.dumps(
+            [
+                {
+                    "Name": "/ai-sentinel-server",
+                    "Config": {"User": "root"},
+                    "HostConfig": {"Privileged": False, "PortBindings": {"8080/tcp": [{"HostIp": "0.0.0.0", "HostPort": "8080"}]}},
+                    "Mounts": [{"Source": "/var/run/docker.sock", "Destination": "/var/run/docker.sock", "Mode": "rw"}],
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+    c_findings = audit_containers(tmp_path, _mapper(), docker_inspect_path=inspect_json)
+    c_titles = [f.title for f in c_findings]
+    assert any("Root" in t for t in c_titles)
+    assert any("Docker Socket" in t for t in c_titles)
+    assert any("0.0.0.0" in t for t in c_titles)
+
+    # 2. Go Server binary with 0.0.0.0 bind, wildcard CORS, and /api/v1/qr/pair
+    srv = tmp_path / "AI Sentinel Server.exe"
+    srv.write_bytes(
+        demo.minimal_pe()
+        + b"\x00Go build ID: abc123\x000.0.0.0:8080\x00Access-Control-Allow-Origin: *\x00/api/v1/qr/pair\x00"
+    )
+    q_findings = audit_qr_pairing_and_web_surface(tmp_path, _mapper())
+    q_titles = [f.title for f in q_findings]
+    assert any("Go (Golang" in t for t in q_titles)
+    assert any("0.0.0.0" in t for t in q_titles)
+    assert any("Wildcard CORS" in t for t in q_titles)
+    assert any("QR / Device-Pairing" in t for t in q_titles)
+
+    # 3. Companion APK with cleartext URL
+    apk = tmp_path / "AI Sentinel.apk"
+    with zipfile.ZipFile(apk, "w") as zf:
+        zf.writestr("AndroidManifest.xml", b"usesCleartextTraffic")
+        zf.writestr("classes.dex", b"http://192.168.1.50:8080/api/v1/qr/pair")
+    a_findings = audit_companion_mobile(tmp_path, _mapper(), explicit_apk=apk)
+    a_titles = [f.title for f in a_findings]
+    assert any("Cleartext HTTP" in t for t in a_titles)
+
+
+def test_docker_layer_scan_qr_entropy_and_cyclonedx_sbom(tmp_path: Path) -> None:
+    import io, tarfile
+    from analyzer.modules.host_offline.container_audit import scan_image_layers
+    from analyzer.modules.static_audit.qr_pairing_web_audit import analyze_qr_token_samples, audit_qr_pairing_and_web_surface
+    from analyzer.core.sbom_exporter import export_cyclonedx_sbom
+
+    # 1. Multi-layer Docker save tarball with deleted secret in layer 0 and dpkg status
+    layer_buf = io.BytesIO()
+    with tarfile.open(fileobj=layer_buf, mode="w") as ltar:
+        sec_data = b"API_KEY=SuperSecretLayerToken12345\n"
+        ti = tarfile.TarInfo(name="app/.env")
+        ti.size = len(sec_data)
+        ltar.addfile(ti, io.BytesIO(sec_data))
+
+        dpkg_data = b"Package: openssl\nVersion: 1.1.1f-1ubuntu2\n\n"
+        ti2 = tarfile.TarInfo(name="var/lib/dpkg/status")
+        ti2.size = len(dpkg_data)
+        ltar.addfile(ti2, io.BytesIO(dpkg_data))
+
+    img_tar = tmp_path / "sentinel_image.tar"
+    with tarfile.open(img_tar, "w") as otar:
+        lbytes = layer_buf.getvalue()
+        lti = tarfile.TarInfo(name="layer0/layer.tar")
+        lti.size = len(lbytes)
+        otar.addfile(lti, io.BytesIO(lbytes))
+
+    layer_findings = scan_image_layers(img_tar, _mapper())
+    assert any("Hardcoded Secrets Recoverable" in f.title for f in layer_findings)
+    assert any("Package Inventory" in f.title for f in layer_findings)
+
+    # 2. QR token entropy & WebSocket ws:// + token query check
+    ent_findings = analyze_qr_token_samples(["10001", "10002", "10003"], _mapper())
+    assert any("Low-Entropy" in f.title for f in ent_findings)
+
+    js_file = tmp_path / "pair_client.js"
+    js_file.write_bytes(b"const sock = new WebSocket('ws://127.0.0.1:8080/ws?token=abc123secret');")
+    ws_findings = audit_qr_pairing_and_web_surface(tmp_path, _mapper())
+    assert any("WebSocket" in f.title for f in ws_findings)
+
+    # 3. CycloneDX 1.5 SBOM export
+    sbom_path = export_cyclonedx_sbom(
+        {
+            "target_name": "AI Sentinel Server.exe",
+            "tool_version": "1.2.0",
+            "findings": [f.to_dict() for f in layer_findings],
+        },
+        tmp_path / "out.cdx.json",
+    )
+    sbom_data = json.loads(sbom_path.read_text(encoding="utf-8"))
+    assert sbom_data["bomFormat"] == "CycloneDX"
+    assert sbom_data["specVersion"] == "1.5"
+    assert any(c["name"] == "openssl" for c in sbom_data["components"])

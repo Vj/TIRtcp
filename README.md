@@ -47,15 +47,15 @@ pip install -e .
 Quick Start & CLI Usage
 1. Offline / Static Assessment
 python -m analyzer.tirtcp `
-  --target "C:\Program Files\TargetApp" `
+  --target "C:\Users\ADMIN\Downloads\vpro_secret\ModernPaint.exe" `
   --compliance general `
   --engagement-id ENG-2026-001 `
   --no-active-probe `
   --output .\reports
-
+C:\Users\ADMIN\Downloads\vpro_secret\ModernPaint.exe
   2. Full 4-Phase Assessment (with Host Evidence, PCAP, State Diff & PDF Export)
   python -m analyzer.tirtcp `
-  --target "C:\Program Files\TargetApp" `
+  --target "C:\Users\ADMIN\Downloads\vpro_secret\ModernPaint.exe" `
   --evidence .\evidence\host_evidence.json `
   --pcap .\evidence\capture.pcapng `
   --procmon-csv .\evidence\procmon.csv `

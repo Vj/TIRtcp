@@ -46,6 +46,9 @@ from analyzer.modules.host_offline.dll_hijack_parser import parse_procmon_csv
 from analyzer.modules.host_offline.ipc_uri_audit import audit_ipc_and_handlers
 from analyzer.modules.host_offline.state_diff_audit import analyze_state_diff
 from analyzer.modules.host_offline.trust_firewall_audit import audit_trust_and_firewall
+from analyzer.modules.host_offline.container_audit import audit_containers, scan_image_layers
+from analyzer.modules.static_audit.qr_pairing_web_audit import analyze_qr_token_samples, audit_qr_pairing_and_web_surface
+from analyzer.modules.static_audit.companion_mobile_audit import audit_companion_mobile
 from analyzer.modules.network_protocol.pcap_analyzer import analyze_pcap_capture
 from analyzer.modules.network_protocol.tls_inspector import inspect_tls_endpoints
 from analyzer.modules.runtime_gated.memory_retention import analyze_post_logout_memory
@@ -63,6 +66,7 @@ from analyzer.modules.static_audit.dotnet_intel import scan_dotnet_intel
 from analyzer.modules.static_audit.dotnet_bundle import extract_bundle
 from analyzer.core.coverage import build_coverage_finding
 from analyzer.core.pdf_exporter import export_html_to_pdf
+from analyzer.core.sbom_exporter import export_cyclonedx_sbom
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from analyzer.modules.static_audit.browser_profile_audit import scan_browser_artifacts
 try:
@@ -198,7 +202,7 @@ def parse_args(baseline_report: Optional[Path] = None) -> argparse.Namespace:
     parser.add_argument(
         "--compliance-map",
         type=Path,
-        default=Path(__file__).resolve().parent.parent / "config" / "compliance_map.yaml",
+        default=Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent.parent)) / "config" / "compliance_map.yaml",
         help="Path to versioned compliance_map.yaml.",
     )
     parser.add_argument(
@@ -224,6 +228,35 @@ def parse_args(baseline_report: Optional[Path] = None) -> argparse.Namespace:
         type=Path,
         default=None,
         help="Optional path to state_diff.json produced by scripts/dynamic_capture.ps1.",
+    )
+    parser.add_argument(
+        "--docker-inspect",
+        type=Path,
+        default=None,
+        help="Path to 'docker inspect <container>' JSON output for container security auditing.",
+    )
+    parser.add_argument(
+        "--companion-apk",
+        type=Path,
+        default=None,
+        help="Path to companion Android .apk file (e.g., QR pairing mobile client) for cross-client auditing.",
+    )
+    parser.add_argument(
+        "--image-tar",
+        type=Path,
+        default=None,
+        help="Path to 'docker save' .tar image archive for multi-layer secret and package scanning.",
+    )
+    parser.add_argument(
+        "--qr-samples",
+        type=Path,
+        default=None,
+        help="Path to newline-delimited or JSON list of captured QR/pairing tokens for entropy analysis.",
+    )
+    parser.add_argument(
+        "--sbom",
+        action="store_true",
+        help="Export a CycloneDX 1.5 JSON SBOM alongside HTML/JSON/SARIF reports.",
     )
     parser.add_argument(
         "--pdf",
@@ -324,6 +357,40 @@ def _run_stages_parallel(
             "TCP-BIN-001",
             str(args.target),
             lambda: audit_crypto_and_antitamper(args.target, mapper, ctx=scan_ctx),
+        ),
+        (
+            "Tech-stack (Go/Node/PyInstaller), local web bind & QR pairing audit",
+            "TCP-PAIR-001",
+            str(args.target),
+            lambda: audit_qr_pairing_and_web_surface(args.target, mapper, ctx=scan_ctx),
+        ),
+        (
+            "Companion mobile APK transport, pinning & secret audit",
+            "TCP-PAIR-001",
+            str(args.companion_apk or args.target),
+            lambda: audit_companion_mobile(args.target, mapper, ctx=scan_ctx, explicit_apk=args.companion_apk),
+        ),
+        (
+            "Docker & container isolation audit (Dockerfile / Compose / Inspect)",
+            "TCP-CONT-001",
+            str(args.docker_inspect or args.target),
+            lambda: audit_containers(args.target, mapper, ctx=scan_ctx, docker_inspect_path=args.docker_inspect, host_evidence=host_evidence if args.evidence else None),
+        ),
+        (
+            "Docker image multi-layer secret & package scan",
+            "TCP-CONT-001",
+            str(args.image_tar or args.target),
+            lambda: scan_image_layers(args.image_tar, mapper) if args.image_tar else [],
+        ),
+        (
+            "QR / pairing token Shannon entropy & predictability check",
+            "TCP-PAIR-001",
+            str(args.qr_samples or args.target),
+            lambda: analyze_qr_token_samples(
+                (json.loads(args.qr_samples.read_text(encoding="utf-8")) if args.qr_samples.suffix.lower() == ".json" else args.qr_samples.read_text(encoding="utf-8").splitlines()),
+                mapper,
+                str(args.qr_samples),
+            ) if (args.qr_samples and args.qr_samples.exists()) else [],
         ),
         (
             "Digital signature, timestamp & revocation verification",
@@ -680,6 +747,9 @@ def main() -> int:
     print(f"HTML Report        : {written['html'].resolve()}")
     print(f"JSON Findings      : {written['json'].resolve()}")
     print(f"SARIF v2.1.0       : {written['sarif'].resolve()}")
+    if getattr(args, "sbom", False):
+        sbom_out = export_cyclonedx_sbom(report.to_dict(), written["json"].with_name(written["json"].stem + "_sbom.cdx.json"))
+        print(f"CycloneDX SBOM     : {sbom_out.resolve()}")
     if getattr(args, "pdf", False):
         pdf_out = export_html_to_pdf(written["html"])
         if pdf_out:

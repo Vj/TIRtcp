@@ -1,632 +1,646 @@
 metadata:
-  schema_version: "1.1.0"
-  last_verified: "2026-11-24"
-  disclaimer: >
-    Automated and manual checks in TIRtcp support technical gap analysis against
-    listed regulatory and industry frameworks. Outputs do not constitute formal
-    legal or regulatory certification.
+  schema_version: 1.0.0
+  last_verified: '2026-11-25'
+  notes: 'Branch-aware baseline definitions for native C/C++ libraries and Electron
+    runtimes. Update via scripts/update_baselines.py or manual vendor advisory review.
 
+    '
 frameworks:
   CWE:
-    name: "Common Weakness Enumeration"
-    version: "4.16"
-    default_scope: "general"
+    name: Common Weakness Enumeration
+    version: '4.16'
+    default_scope: general
   OWASP_ASVS:
-    name: "OWASP Application Security Verification Standard"
-    version: "4.0.3"
-    default_scope: "general"
+    name: OWASP Application Security Verification Standard
+    version: 4.0.3
+    default_scope: general
   OWASP_MASVS:
-    name: "OWASP Mobile/Client Application Security Verification Standard"
-    version: "2.1.0"
-    default_scope: "general"
+    name: OWASP Mobile/Client Application Security Verification Standard
+    version: 2.1.0
+    default_scope: general
   OWASP_DESKTOP:
-    name: "OWASP Desktop App Security Top 10 (Legacy Reference)"
-    version: "1.0"
-    default_scope: "general"
+    name: OWASP Desktop App Security Top 10 (Legacy Reference)
+    version: '1.0'
+    default_scope: general
   PCI_DSS:
-    name: "Payment Card Industry Data Security Standard"
-    version: "4.0.1"
-    default_scope: "bfsi"
+    name: Payment Card Industry Data Security Standard
+    version: 4.0.1
+    default_scope: bfsi
   RBI_DPSC:
-    name: "RBI Master Direction on Digital Payment Security Controls"
-    version: "2021"
-    default_scope: "bfsi"
+    name: RBI Master Direction on Digital Payment Security Controls
+    version: '2021'
+    default_scope: bfsi
   DPDP:
-    name: "Digital Personal Data Protection Act 2023 & DPDP Rules 2025"
-    version: "2025"
-    default_scope: "general"
+    name: Digital Personal Data Protection Act 2023 & DPDP Rules 2025
+    version: '2025'
+    default_scope: general
   CERT_IN:
-    name: "CERT-In Directions under Section 70B(6) of the IT Act, 2000"
-    version: "2022-04-28"
-    default_scope: "general"
-
+    name: CERT-In Directions under Section 70B(6) of the IT Act, 2000
+    version: '2022-04-28'
+    default_scope: general
 checks:
-  # ---------------------------------------------------------------------------
-  # 1. Binary Hardening & Code Integrity
-  # ---------------------------------------------------------------------------
   TCP-BIN-001:
-    title: "PE/ELF Binary Exploit Mitigations (ASLR, High-Entropy VA, DEP/NX, CFG, x86 SafeSEH)"
-    category: "Binary Hardening"
+    title: PE/ELF Binary Exploit Mitigations (ASLR, High-Entropy VA, DEP/NX, CFG,
+      x86 SafeSEH)
+    category: Binary Hardening
     mappings:
-      - framework: "CWE"
-        version: "4.16"
-        control_id: "CWE-119 / CWE-693"
-        control_title: "Improper Restriction of Operations within Memory Buffer / Protection Mechanism Failure"
-        relation: "direct"
-        scope: "general"
-      - framework: "OWASP_ASVS"
-        version: "4.0.3"
-        control_id: "V14.2.1"
-        control_title: "Dependency and Build Hardening Verification"
-        relation: "supports"
-        scope: "general"
-      - framework: "OWASP_DESKTOP"
-        version: "1.0"
-        control_id: "DA8"
-        control_title: "Poor Code Quality"
-        relation: "supports"
-        scope: "general"
-
+    - framework: CWE
+      version: '4.16'
+      control_id: CWE-119 / CWE-693
+      control_title: Improper Restriction of Operations within Memory Buffer / Protection
+        Mechanism Failure
+      relation: direct
+      scope: general
+    - framework: OWASP_ASVS
+      version: 4.0.3
+      control_id: V14.2.1
+      control_title: Dependency and Build Hardening Verification
+      relation: supports
+      scope: general
+    - framework: OWASP_DESKTOP
+      version: '1.0'
+      control_id: DA8
+      control_title: Poor Code Quality
+      relation: supports
+      scope: general
   TCP-BIN-002:
-    title: "Authenticode / Code Signing Validity, Timestamping, and Revocation"
-    category: "Binary Integrity"
+    title: Authenticode / Code Signing Validity, Timestamping, and Revocation
+    category: Binary Integrity
     mappings:
-      - framework: "CWE"
-        version: "4.16"
-        control_id: "CWE-345 / CWE-494"
-        control_title: "Insufficient Verification of Data Authenticity / Download Without Integrity Check"
-        relation: "direct"
-        scope: "general"
-      - framework: "OWASP_MASVS"
-        version: "2.1.0"
-        control_id: "MASVS-RESILIENCE-1"
-        control_title: "App Validates Integrity of Code and Runtime Environment"
-        relation: "supports"
-        scope: "general"
-      - framework: "RBI_DPSC"
-        version: "2021"
-        control_id: "Chap-IV / Sec-24"
-        control_title: "Application Anti-Tampering and Code Integrity Controls"
-        relation: "supports"
-        scope: "bfsi"
-      - framework: "PCI_DSS"
-        version: "4.0.1"
-        control_id: "Req 6.3.2"
-        control_title: "Maintain Inventory and Integrity of Bespoke and Custom Software"
-        relation: "supports"
-        scope: "bfsi"
-
-  # ---------------------------------------------------------------------------
-  # 2. Hardcoded Secrets, Direct DB Connections & Debug Artifacts
-  # ---------------------------------------------------------------------------
+    - framework: CWE
+      version: '4.16'
+      control_id: CWE-345 / CWE-494
+      control_title: Insufficient Verification of Data Authenticity / Download Without
+        Integrity Check
+      relation: direct
+      scope: general
+    - framework: OWASP_MASVS
+      version: 2.1.0
+      control_id: MASVS-RESILIENCE-1
+      control_title: App Validates Integrity of Code and Runtime Environment
+      relation: supports
+      scope: general
+    - framework: RBI_DPSC
+      version: '2021'
+      control_id: Chap-IV / Sec-24
+      control_title: Application Anti-Tampering and Code Integrity Controls
+      relation: supports
+      scope: bfsi
+    - framework: PCI_DSS
+      version: 4.0.1
+      control_id: Req 6.3.2
+      control_title: Maintain Inventory and Integrity of Bespoke and Custom Software
+      relation: supports
+      scope: bfsi
   TCP-SEC-001:
-    title: "Hardcoded Credentials, API Keys, or Direct Database Connection Strings"
-    category: "Secrets & Configuration"
+    title: Hardcoded Credentials, API Keys, or Direct Database Connection Strings
+    category: Secrets & Configuration
     mappings:
-      - framework: "CWE"
-        version: "4.16"
-        control_id: "CWE-798 / CWE-259"
-        control_title: "Use of Hard-coded Credentials"
-        relation: "direct"
-        scope: "general"
-      - framework: "OWASP_ASVS"
-        version: "4.0.3"
-        control_id: "V2.10.4"
-        control_title: "Passwords, Keys, and Secrets Not Hardcoded in Client Binaries or Configs"
-        relation: "supports"
-        scope: "general"
-      - framework: "OWASP_DESKTOP"
-        version: "1.0"
-        control_id: "DA3"
-        control_title: "Sensitive Data Exposure"
-        relation: "supports"
-        scope: "general"
-      - framework: "PCI_DSS"
-        version: "4.0.1"
-        control_id: "Req 8.6.2"
-        control_title: "Application and System Account Passwords Not Hardcoded in Scripts or Files"
-        relation: "supports"
-        scope: "bfsi"
-      - framework: "DPDP"
-        version: "2025"
-        control_id: "Sec-8(5)"
-        control_title: "Reasonable Security Safeguards to Prevent Personal Data Breach"
-        relation: "supports"
-        scope: "general"
-
+    - framework: CWE
+      version: '4.16'
+      control_id: CWE-798 / CWE-259
+      control_title: Use of Hard-coded Credentials
+      relation: direct
+      scope: general
+    - framework: OWASP_ASVS
+      version: 4.0.3
+      control_id: V2.10.4
+      control_title: Passwords, Keys, and Secrets Not Hardcoded in Client Binaries
+        or Configs
+      relation: supports
+      scope: general
+    - framework: OWASP_DESKTOP
+      version: '1.0'
+      control_id: DA3
+      control_title: Sensitive Data Exposure
+      relation: supports
+      scope: general
+    - framework: PCI_DSS
+      version: 4.0.1
+      control_id: Req 8.6.2
+      control_title: Application and System Account Passwords Not Hardcoded in Scripts
+        or Files
+      relation: supports
+      scope: bfsi
+    - framework: DPDP
+      version: '2025'
+      control_id: Sec-8(5)
+      control_title: Reasonable Security Safeguards to Prevent Personal Data Breach
+      relation: supports
+      scope: general
   TCP-SEC-002:
-    title: "Shipped Debug Symbols (PDB), Debug Builds, or Verbose Local Logs Leaking PII/Tokens"
-    category: "Data Exposure & Logging"
+    title: Shipped Debug Symbols (PDB), Debug Builds, or Verbose Local Logs Leaking
+      PII/Tokens
+    category: Data Exposure & Logging
     mappings:
-      - framework: "CWE"
-        version: "4.16"
-        control_id: "CWE-532 / CWE-215"
-        control_title: "Insertion of Sensitive Information into Log File / Debug Information Exposure"
-        relation: "direct"
-        scope: "general"
-      - framework: "OWASP_ASVS"
-        version: "4.0.3"
-        control_id: "V7.1.1"
-        control_title: "Log Content Excludes Sensitive Credentials and Session Tokens"
-        relation: "supports"
-        scope: "general"
-      - framework: "DPDP"
-        version: "2025"
-        control_id: "Sec-8(5)"
-        control_title: "Reasonable Security Safeguards (Data Minimization and Local PII Protection)"
-        relation: "supports"
-        scope: "general"
-      - framework: "PCI_DSS"
-        version: "4.0.1"
-        control_id: "Req 3.3.1"
-        control_title: "Sensitive Authentication Data Not Retained After Authorization"
-        relation: "supports"
-        scope: "bfsi"
-      - framework: "CERT_IN"
-        version: "2022-04-28"
-        control_id: "Dir-iv"
-        control_title: "Audit Log Integrity & Timestamp Readiness (Informational Support for 180-Day Retention)"
-        relation: "informational_support"
-        scope: "general"
-
-  # ---------------------------------------------------------------------------
-  # 3. Software Composition Analysis (SBOM & Native DLL Fingerprinting)
-  # ---------------------------------------------------------------------------
+    - framework: CWE
+      version: '4.16'
+      control_id: CWE-532 / CWE-215
+      control_title: Insertion of Sensitive Information into Log File / Debug Information
+        Exposure
+      relation: direct
+      scope: general
+    - framework: OWASP_ASVS
+      version: 4.0.3
+      control_id: V7.1.1
+      control_title: Log Content Excludes Sensitive Credentials and Session Tokens
+      relation: supports
+      scope: general
+    - framework: DPDP
+      version: '2025'
+      control_id: Sec-8(5)
+      control_title: Reasonable Security Safeguards (Data Minimization and Local PII
+        Protection)
+      relation: supports
+      scope: general
+    - framework: PCI_DSS
+      version: 4.0.1
+      control_id: Req 3.3.1
+      control_title: Sensitive Authentication Data Not Retained After Authorization
+      relation: supports
+      scope: bfsi
+    - framework: CERT_IN
+      version: '2022-04-28'
+      control_id: Dir-iv
+      control_title: Audit Log Integrity & Timestamp Readiness (Informational Support
+        for 180-Day Retention)
+      relation: informational_support
+      scope: general
   TCP-SCA-001:
-    title: "Outdated Third-Party Packages or Vulnerable Native Libraries (OpenSSL, zlib, libcurl)"
-    category: "Supply Chain & Dependencies"
+    title: Outdated Third-Party Packages or Vulnerable Native Libraries (OpenSSL,
+      zlib, libcurl)
+    category: Supply Chain & Dependencies
     mappings:
-      - framework: "CWE"
-        version: "4.16"
-        control_id: "CWE-1104"
-        control_title: "Use of Unmaintained Third-Party Components"
-        relation: "direct"
-        scope: "general"
-      - framework: "OWASP_ASVS"
-        version: "4.0.3"
-        control_id: "V14.2.1"
-        control_title: "All Components Kept Up to Date and Free of Known Vulnerabilities"
-        relation: "supports"
-        scope: "general"
-      - framework: "OWASP_DESKTOP"
-        version: "1.0"
-        control_id: "DA9"
-        control_title: "Using Components with Known Vulnerabilities"
-        relation: "supports"
-        scope: "general"
-      - framework: "PCI_DSS"
-        version: "4.0.1"
-        control_id: "Req 6.3.1"
-        control_title: "Known Security Vulnerabilities Identified and Managed"
-        relation: "supports"
-        scope: "bfsi"
-
-  # ---------------------------------------------------------------------------
-  # 4. Host Filesystem ACLs, Auto-Update & DLL Search Order
-  # ---------------------------------------------------------------------------
+    - framework: CWE
+      version: '4.16'
+      control_id: CWE-1104
+      control_title: Use of Unmaintained Third-Party Components
+      relation: direct
+      scope: general
+    - framework: OWASP_ASVS
+      version: 4.0.3
+      control_id: V14.2.1
+      control_title: All Components Kept Up to Date and Free of Known Vulnerabilities
+      relation: supports
+      scope: general
+    - framework: OWASP_DESKTOP
+      version: '1.0'
+      control_id: DA9
+      control_title: Using Components with Known Vulnerabilities
+      relation: supports
+      scope: general
+    - framework: PCI_DSS
+      version: 4.0.1
+      control_id: Req 6.3.1
+      control_title: Known Security Vulnerabilities Identified and Managed
+      relation: supports
+      scope: bfsi
   TCP-HOST-001:
-    title: "Weak Installation or Auto-Update Directory Permissions (Binary Replacement Risk)"
-    category: "Host & Filesystem ACLs"
+    title: Weak Installation or Auto-Update Directory Permissions (Binary Replacement
+      Risk)
+    category: Host & Filesystem ACLs
     mappings:
-      - framework: "CWE"
-        version: "4.16"
-        control_id: "CWE-732 / CWE-276"
-        control_title: "Incorrect Permission Assignment for Critical Resource"
-        relation: "direct"
-        scope: "general"
-      - framework: "OWASP_DESKTOP"
-        version: "1.0"
-        control_id: "DA6"
-        control_title: "Security Misconfiguration"
-        relation: "supports"
-        scope: "general"
-      - framework: "RBI_DPSC"
-        version: "2021"
-        control_id: "Chap-IV / Sec-24"
-        control_title: "Protection Against Unauthorized Binary Modification"
-        relation: "supports"
-        scope: "bfsi"
-
+    - framework: CWE
+      version: '4.16'
+      control_id: CWE-732 / CWE-276
+      control_title: Incorrect Permission Assignment for Critical Resource
+      relation: direct
+      scope: general
+    - framework: OWASP_DESKTOP
+      version: '1.0'
+      control_id: DA6
+      control_title: Security Misconfiguration
+      relation: supports
+      scope: general
+    - framework: RBI_DPSC
+      version: '2021'
+      control_id: Chap-IV / Sec-24
+      control_title: Protection Against Unauthorized Binary Modification
+      relation: supports
+      scope: bfsi
   TCP-HOST-002:
-    title: "DLL Search-Order Hijacking (Writable PATH / Procmon NAME NOT FOUND)"
-    category: "Host & Runtime Loading"
+    title: DLL Search-Order Hijacking (Writable PATH / Procmon NAME NOT FOUND)
+    category: Host & Runtime Loading
     mappings:
-      - framework: "CWE"
-        version: "4.16"
-        control_id: "CWE-426 / CWE-427"
-        control_title: "Untrusted Search Path / Uncontrolled Search Path Element"
-        relation: "direct"
-        scope: "general"
-      - framework: "OWASP_MASVS"
-        version: "2.1.0"
-        control_id: "MASVS-PLATFORM-1"
-        control_title: "Secure Use of Platform APIs and Dynamic Library Loading"
-        relation: "supports"
-        scope: "general"
-
-  # ---------------------------------------------------------------------------
-  # 5. Network Transport & Custom Protocol Security
-  # ---------------------------------------------------------------------------
+    - framework: CWE
+      version: '4.16'
+      control_id: CWE-426 / CWE-427
+      control_title: Untrusted Search Path / Uncontrolled Search Path Element
+      relation: direct
+      scope: general
+    - framework: OWASP_MASVS
+      version: 2.1.0
+      control_id: MASVS-PLATFORM-1
+      control_title: Secure Use of Platform APIs and Dynamic Library Loading
+      relation: supports
+      scope: general
   TCP-NET-001:
-    title: "Cleartext Network Transmission or Deprecated TLS (< TLS 1.2) on Backend Endpoints"
-    category: "Network & Transport"
+    title: Cleartext Network Transmission or Deprecated TLS (< TLS 1.2) on Backend
+      Endpoints
+    category: Network & Transport
     mappings:
-      - framework: "CWE"
-        version: "4.16"
-        control_id: "CWE-319 / CWE-326"
-        control_title: "Cleartext Transmission of Sensitive Information / Inadequate Encryption Strength"
-        relation: "direct"
-        scope: "general"
-      - framework: "OWASP_ASVS"
-        version: "4.0.3"
-        control_id: "V9.1.1"
-        control_title: "TLS Used for All Connectivity with Strong Cipher Suites"
-        relation: "supports"
-        scope: "general"
-      - framework: "OWASP_DESKTOP"
-        version: "1.0"
-        control_id: "DA7"
-        control_title: "Insecure Communication"
-        relation: "supports"
-        scope: "general"
-      - framework: "PCI_DSS"
-        version: "4.0.1"
-        control_id: "Req 4.2.1"
-        control_title: "Strong Cryptography and Security Protocols Safeguard Sensitive Data During Transmission"
-        relation: "supports"
-        scope: "bfsi"
-      - framework: "RBI_DPSC"
-        version: "2021"
-        control_id: "Chap-II / Sec-9"
-        control_title: "End-to-End Encrypted Communication Channels"
-        relation: "supports"
-        scope: "bfsi"
-      - framework: "DPDP"
-        version: "2025"
-        control_id: "Sec-8(5)"
-        control_title: "Reasonable Security Safeguards During Data Transmission"
-        relation: "supports"
-        scope: "general"
-
-  # ---------------------------------------------------------------------------
-  # 6. Gated Post-Logout Memory Hygiene
-  # ---------------------------------------------------------------------------
+    - framework: CWE
+      version: '4.16'
+      control_id: CWE-319 / CWE-326
+      control_title: Cleartext Transmission of Sensitive Information / Inadequate
+        Encryption Strength
+      relation: direct
+      scope: general
+    - framework: OWASP_ASVS
+      version: 4.0.3
+      control_id: V9.1.1
+      control_title: TLS Used for All Connectivity with Strong Cipher Suites
+      relation: supports
+      scope: general
+    - framework: OWASP_DESKTOP
+      version: '1.0'
+      control_id: DA7
+      control_title: Insecure Communication
+      relation: supports
+      scope: general
+    - framework: PCI_DSS
+      version: 4.0.1
+      control_id: Req 4.2.1
+      control_title: Strong Cryptography and Security Protocols Safeguard Sensitive
+        Data During Transmission
+      relation: supports
+      scope: bfsi
+    - framework: RBI_DPSC
+      version: '2021'
+      control_id: Chap-II / Sec-9
+      control_title: End-to-End Encrypted Communication Channels
+      relation: supports
+      scope: bfsi
+    - framework: DPDP
+      version: '2025'
+      control_id: Sec-8(5)
+      control_title: Reasonable Security Safeguards During Data Transmission
+      relation: supports
+      scope: general
   TCP-MEM-001:
-    title: "Post-Logout Sensitive Credential or Token Retention in Process Memory"
-    category: "Runtime Memory Hygiene"
+    title: Post-Logout Sensitive Credential or Token Retention in Process Memory
+    category: Runtime Memory Hygiene
     mappings:
-      - framework: "CWE"
-        version: "4.16"
-        control_id: "CWE-316 / CWE-226"
-        control_title: "Cleartext Storage of Sensitive Information in Memory / Sensitive Info Not Cleared Before Release"
-        relation: "supports"
-        scope: "general"
-      - framework: "OWASP_ASVS"
-        version: "4.0.3"
-        control_id: "V2.10.2"
-        control_title: "Sensitive Data Zeroed From Memory After Use"
-        relation: "supports"
-        scope: "general"
-      - framework: "PCI_DSS"
-        version: "4.0.1"
-        control_id: "Req 3.3.1"
-        control_title: "No Post-Authentication Retention of Sensitive Authentication Data"
-        relation: "supports"
-        scope: "bfsi"
-
-metadata:
-  schema_version: "1.0.0"
-  last_verified: "2026-11-25"
-  notes: >
-    Branch-aware baseline definitions for native C/C++ libraries and Electron runtimes.
-    Update via scripts/update_baselines.py or manual vendor advisory review.
-
+    - framework: CWE
+      version: '4.16'
+      control_id: CWE-316 / CWE-226
+      control_title: Cleartext Storage of Sensitive Information in Memory / Sensitive
+        Info Not Cleared Before Release
+      relation: supports
+      scope: general
+    - framework: OWASP_ASVS
+      version: 4.0.3
+      control_id: V2.10.2
+      control_title: Sensitive Data Zeroed From Memory After Use
+      relation: supports
+      scope: general
+    - framework: PCI_DSS
+      version: 4.0.1
+      control_id: Req 3.3.1
+      control_title: No Post-Authentication Retention of Sensitive Authentication
+        Data
+      relation: supports
+      scope: bfsi
+  TCP-CONT-001:
+    title: Container & Docker Runtime Isolation
+    general:
+    - framework: ISO/IEC 27001:2022
+      control_id: A.8.9
+      title: Configuration Management
+      relation: direct_technical_evidence
+      rationale: Container privilege and host mount isolation.
+    - framework: DPDP Rules 2025
+      control_id: Rule 6
+      title: Reasonable Security Safeguards
+      relation: supporting_technical_evidence
+      rationale: Prevents host takeover of data processing containers.
+    bfsi:
+    - framework: PCI DSS v4.0
+      control_id: 2.2.1
+      title: System Configuration Standards
+      relation: direct_technical_evidence
+      rationale: Hardened non-root container execution.
+    - framework: RBI Digital Payment Security
+      control_id: Sec-1.4
+      title: Application & Infrastructure Hardening
+      relation: direct_technical_evidence
+      rationale: Segregation of containerized payment services.
+  TCP-PAIR-001:
+    title: Local Web Listener & QR/Device-Pairing Security
+    general:
+    - framework: ISO/IEC 27001:2022
+      control_id: A.8.5
+      title: Secure Authentication
+      relation: direct_technical_evidence
+      rationale: High-entropy, expiring, single-use device pairing tokens.
+    - framework: DPDP Rules 2025
+      control_id: Rule 6
+      title: Access Control & Authentication
+      relation: direct_technical_evidence
+      rationale: Prevents unauthorized mobile/LAN session hijacking.
+    bfsi:
+    - framework: PCI DSS v4.0
+      control_id: 8.3.1
+      title: Strong Authentication Factors
+      relation: direct_technical_evidence
+      rationale: Cryptographic pairing & anti-replay enforcement.
+    - framework: RBI Digital Payment Security
+      control_id: Sec-3.2
+      title: Authentication & Session Management
+      relation: direct_technical_evidence
+      rationale: Protects QR/device-linking flows against replay and MITM.
 native_libraries:
   OpenSSL:
-    pattern: '\bOpenSSL\s+([0-9]+\.[0-9]+\.[0-9]+[a-z]?)\b'
-    severity: "High"
-    advisory: "Legacy or unpatched OpenSSL branches expose thick clients to TLS downgrade, X.509 verification, and memory-safety CVEs."
+    pattern: \bOpenSSL\s+([0-9]+\.[0-9]+\.[0-9]+[a-z]?)\b
+    severity: High
+    advisory: Legacy or unpatched OpenSSL branches expose thick clients to TLS downgrade,
+      X.509 verification, and memory-safety CVEs.
     branches:
-      - prefix: "1.0."
-        status: "eol"
-        min_safe: "1.0.2zk"
-      - prefix: "1.1."
-        status: "eol"
-        min_safe: "1.1.1w"
-      - prefix: "3.0."
-        status: "lts"
-        min_safe: "3.0.15"
-      - prefix: "3.1."
-        status: "eol"
-        min_safe: "3.1.7"
-      - prefix: "3.2."
-        status: "supported"
-        min_safe: "3.2.3"
-      - prefix: "3.3."
-        status: "supported"
-        min_safe: "3.3.2"
-      - prefix: "3.4."
-        status: "supported"
-        min_safe: "3.4.0"
-
+    - prefix: 1.0.
+      status: eol
+      min_safe: 1.0.2zk
+    - prefix: 1.1.
+      status: eol
+      min_safe: 1.1.1w
+    - prefix: 3.0.
+      status: lts
+      min_safe: 3.0.15
+    - prefix: 3.1.
+      status: eol
+      min_safe: 3.1.7
+    - prefix: 3.2.
+      status: supported
+      min_safe: 3.2.3
+    - prefix: 3.3.
+      status: supported
+      min_safe: 3.3.2
+    - prefix: 3.4.
+      status: supported
+      min_safe: 3.4.0
   libcurl:
-    pattern: '\blibcurl/([0-9]+\.[0-9]+\.[0-9]+)\b'
-    severity: "High"
-    advisory: "Outdated libcurl releases are affected by SOCKS5 heap overflow (CVE-2023-38545) and HTTP/2 framing vulnerabilities."
+    pattern: \blibcurl/([0-9]+\.[0-9]+\.[0-9]+)\b
+    severity: High
+    advisory: Outdated libcurl releases are affected by SOCKS5 heap overflow (CVE-2023-38545)
+      and HTTP/2 framing vulnerabilities.
     branches:
-      - prefix: "7."
-        status: "eol"
-        min_safe: "8.10.0"
-      - prefix: "8."
-        status: "supported"
-        min_safe: "8.10.0"
-
+    - prefix: '7.'
+      status: eol
+      min_safe: 8.10.0
+    - prefix: '8.'
+      status: supported
+      min_safe: 8.10.0
   zlib:
-    pattern: '\b(?:inflate|deflate)\s+([0-9]+\.[0-9]+\.[0-9]+)\s+Copyright 1995-'
-    severity: "Medium"
-    advisory: "zlib versions prior to 1.3.1 are affected by inflate/deflate memory corruption issues (e.g., CVE-2022-37434)."
+    pattern: \b(?:inflate|deflate)\s+([0-9]+\.[0-9]+\.[0-9]+)\s+Copyright 1995-
+    severity: Medium
+    advisory: zlib versions prior to 1.3.1 are affected by inflate/deflate memory
+      corruption issues (e.g., CVE-2022-37434).
     branches:
-      - prefix: "1.2."
-        status: "eol"
-        min_safe: "1.3.1"
-      - prefix: "1.3."
-        status: "supported"
-        min_safe: "1.3.1"
-
+    - prefix: 1.2.
+      status: eol
+      min_safe: 1.3.1
+    - prefix: 1.3.
+      status: supported
+      min_safe: 1.3.1
   SQLite:
-    pattern: '\bSQLite\s+(?:version\s+)?(3\.[0-9]+\.[0-9]+)\b'
-    severity: "Medium"
-    advisory: "Outdated embedded SQLite engines expose local client databases to memory safety and FTS5 vulnerabilities."
+    pattern: \bSQLite\s+(?:version\s+)?(3\.[0-9]+\.[0-9]+)\b
+    severity: Medium
+    advisory: Outdated embedded SQLite engines expose local client databases to memory
+      safety and FTS5 vulnerabilities.
     branches:
-      - prefix: "3."
-        status: "supported"
-        min_safe: "3.46.0"
-
+    - prefix: '3.'
+      status: supported
+      min_safe: 3.46.0
   libexpat:
-    pattern: '\bexpat_([0-9]+\.[0-9]+\.[0-9]+)\b'
-    severity: "Medium"
-    advisory: "Older libexpat XML parsers suffer from integer overflow and billion-laughs DoS flaws."
+    pattern: \bexpat_([0-9]+\.[0-9]+\.[0-9]+)\b
+    severity: Medium
+    advisory: Older libexpat XML parsers suffer from integer overflow and billion-laughs
+      DoS flaws.
     branches:
-      - prefix: "2."
-        status: "supported"
-        min_safe: "2.6.3"
-
+    - prefix: '2.'
+      status: supported
+      min_safe: 2.6.3
   libssh2:
-    pattern: '\blibssh2/([0-9]+\.[0-9]+\.[0-9]+)\b'
-    severity: "Medium"
-    advisory: "Legacy libssh2 builds are vulnerable to out-of-bounds read and key-exchange flaws."
+    pattern: \blibssh2/([0-9]+\.[0-9]+\.[0-9]+)\b
+    severity: Medium
+    advisory: Legacy libssh2 builds are vulnerable to out-of-bounds read and key-exchange
+      flaws.
     branches:
-      - prefix: "1."
-        status: "supported"
-        min_safe: "1.11.0"
-
+    - prefix: '1.'
+      status: supported
+      min_safe: 1.11.0
 electron:
   min_supported_major: 31
-  supported_majors: [31, 32, 33]
-  advisory: "Unsupported Electron versions bundle end-of-life Chromium/V8 engines with publicly known renderer sandbox escapes."
-
+  supported_majors:
+  - 31
+  - 32
+  - 33
+  advisory: Unsupported Electron versions bundle end-of-life Chromium/V8 engines with
+    publicly known renderer sandbox escapes.
 TCP-INTEL-001:
-    title: "Application Technology & Build Profile"
-    mappings:
-      - framework: "OWASP_ASVS"
-        version: "4.0.3"
-        control_id: "V1.1.2"
-        control_title: "Application Architecture and Component Inventory"
-        relation: "supports"
-        scope: "general"
-
+  title: Application Technology & Build Profile
+  mappings:
+  - framework: OWASP_ASVS
+    version: 4.0.3
+    control_id: V1.1.2
+    control_title: Application Architecture and Component Inventory
+    relation: supports
+    scope: general
 TCP-INTEL-002:
-    title: "Packed, Protected, or Self-Modifying Binary Indicators"
-    mappings:
-      - framework: "CWE"
-        version: "4.16"
-        control_id: "CWE-506"
-        control_title: "Embedded Malicious or Obfuscated Code Behavior"
-        relation: "supports"
-        scope: "general"
-
+  title: Packed, Protected, or Self-Modifying Binary Indicators
+  mappings:
+  - framework: CWE
+    version: '4.16'
+    control_id: CWE-506
+    control_title: Embedded Malicious or Obfuscated Code Behavior
+    relation: supports
+    scope: general
 TCP-INTEL-003:
-    title: "Imported Capability & Memory-Unsafe CRT API Leads"
-    mappings:
-      - framework: "CWE"
-        version: "4.16"
-        control_id: "CWE-676"
-        control_title: "Use of Potentially Dangerous Function"
-        relation: "direct"
-        scope: "general"
-      - framework: "OWASP_ASVS"
-        version: "4.0.3"
-        control_id: "V5.4.1"
-        control_title: "Memory, String, and Unmanaged Code Safety"
-        relation: "supports"
-        scope: "general"
-
+  title: Imported Capability & Memory-Unsafe CRT API Leads
+  mappings:
+  - framework: CWE
+    version: '4.16'
+    control_id: CWE-676
+    control_title: Use of Potentially Dangerous Function
+    relation: direct
+    scope: general
+  - framework: OWASP_ASVS
+    version: 4.0.3
+    control_id: V5.4.1
+    control_title: Memory, String, and Unmanaged Code Safety
+    relation: supports
+    scope: general
 TCP-INTEL-004:
-    title: "Offline Authenticode Integrity & Signing Metadata"
-    mappings:
-      - framework: "CWE"
-        version: "4.16"
-        control_id: "CWE-345"
-        control_title: "Insufficient Verification of Data Authenticity"
-        relation: "direct"
-        scope: "general"
-      - framework: "OWASP_MASVS"
-        version: "2.1.0"
-        control_id: "MASVS-RESILIENCE-1"
-        control_title: "Binary Integrity and Code-Signing Verification"
-        relation: "supports"
-        scope: "general"
-
+  title: Offline Authenticode Integrity & Signing Metadata
+  mappings:
+  - framework: CWE
+    version: '4.16'
+    control_id: CWE-345
+    control_title: Insufficient Verification of Data Authenticity
+    relation: direct
+    scope: general
+  - framework: OWASP_MASVS
+    version: 2.1.0
+    control_id: MASVS-RESILIENCE-1
+    control_title: Binary Integrity and Code-Signing Verification
+    relation: supports
+    scope: general
 TCP-INTEL-005:
-    title: "PE Manifest UAC Privilege & Metadata Hygiene"
-    mappings:
-      - framework: "CWE"
-        version: "4.16"
-        control_id: "CWE-250"
-        control_title: "Execution with Unnecessary Privileges"
-        relation: "direct"
-        scope: "general"
-
+  title: PE Manifest UAC Privilege & Metadata Hygiene
+  mappings:
+  - framework: CWE
+    version: '4.16'
+    control_id: CWE-250
+    control_title: Execution with Unnecessary Privileges
+    relation: direct
+    scope: general
 TCP-INTEL-010:
-    title: "Hard-Coded Network & Telemetry Endpoint Inventory"
-    mappings:
-      - framework: "CWE"
-        version: "4.16"
-        control_id: "CWE-319"
-        control_title: "Cleartext Transmission of Sensitive Information"
-        relation: "supports"
-        scope: "general"
-      - framework: "DPDP"
-        version: "2025"
-        control_id: "Sec-8(5)"
-        control_title: "Reasonable Security Safeguards & Third-Party Data Egress Control"
-        relation: "supports"
-        scope: "general"
-
+  title: Hard-Coded Network & Telemetry Endpoint Inventory
+  mappings:
+  - framework: CWE
+    version: '4.16'
+    control_id: CWE-319
+    control_title: Cleartext Transmission of Sensitive Information
+    relation: supports
+    scope: general
+  - framework: DPDP
+    version: '2025'
+    control_id: Sec-8(5)
+    control_title: Reasonable Security Safeguards & Third-Party Data Egress Control
+    relation: supports
+    scope: general
 TCP-INTEL-011:
-    title: "Direct Database or Broker Endpoint Referenced by Client"
-    mappings:
-      - framework: "OWASP_DESKTOP"
-        version: "1.0"
-        control_id: "DA1"
-        control_title: "Improper Two-Tier Client-Database Architecture"
-        relation: "direct"
-        scope: "general"
-
+  title: Direct Database or Broker Endpoint Referenced by Client
+  mappings:
+  - framework: OWASP_DESKTOP
+    version: '1.0'
+    control_id: DA1
+    control_title: Improper Two-Tier Client-Database Architecture
+    relation: direct
+    scope: general
 TCP-INTEL-012:
-    title: "Hard-Coded Secrets or Cryptographic Key Material"
-    mappings:
-      - framework: "CWE"
-        version: "4.16"
-        control_id: "CWE-798 / CWE-321"
-        control_title: "Use of Hard-coded Credentials / Cryptographic Key"
-        relation: "direct"
-        scope: "general"
-      - framework: "RBI_DPSC"
-        version: "2021"
-        control_id: "Para-12"
-        control_title: "Protection of Cryptographic Keys and Credentials"
-        relation: "supports"
-        scope: "bfsi"
-
+  title: Hard-Coded Secrets or Cryptographic Key Material
+  mappings:
+  - framework: CWE
+    version: '4.16'
+    control_id: CWE-798 / CWE-321
+    control_title: Use of Hard-coded Credentials / Cryptographic Key
+    relation: direct
+    scope: general
+  - framework: RBI_DPSC
+    version: '2021'
+    control_id: Para-12
+    control_title: Protection of Cryptographic Keys and Credentials
+    relation: supports
+    scope: bfsi
 TCP-INTEL-013:
-    title: "Weak Cryptographic Algorithm or Cipher Mode References"
-    mappings:
-      - framework: "CWE"
-        version: "4.16"
-        control_id: "CWE-327"
-        control_title: "Use of a Broken or Risky Cryptographic Algorithm"
-        relation: "direct"
-        scope: "general"
-
+  title: Weak Cryptographic Algorithm or Cipher Mode References
+  mappings:
+  - framework: CWE
+    version: '4.16'
+    control_id: CWE-327
+    control_title: Use of a Broken or Risky Cryptographic Algorithm
+    relation: direct
+    scope: general
 TCP-INTEL-014:
-    title: "Embedded SQL, OS Commands, Registry & Writable-Path Leads"
-    mappings:
-      - framework: "CWE"
-        version: "4.16"
-        control_id: "CWE-89 / CWE-78"
-        control_title: "Improper Neutralization of Special Elements in SQL / OS Commands"
-        relation: "supports"
-        scope: "general"
-
+  title: Embedded SQL, OS Commands, Registry & Writable-Path Leads
+  mappings:
+  - framework: CWE
+    version: '4.16'
+    control_id: CWE-89 / CWE-78
+    control_title: Improper Neutralization of Special Elements in SQL / OS Commands
+    relation: supports
+    scope: general
 TCP-INTEL-015:
-    title: "Debug, Test, or Security-Bypass Switches"
-    mappings:
-      - framework: "CWE"
-        version: "4.16"
-        control_id: "CWE-489"
-        control_title: "Active Debug Code"
-        relation: "direct"
-        scope: "general"
-
+  title: Debug, Test, or Security-Bypass Switches
+  mappings:
+  - framework: CWE
+    version: '4.16'
+    control_id: CWE-489
+    control_title: Active Debug Code
+    relation: direct
+    scope: general
 TCP-INTEL-020:
-    title: ".NET Assembly Profile, Obfuscation & Single-File Bundle Inventory"
-    mappings:
-      - framework: "OWASP_ASVS"
-        version: "4.0.3"
-        control_id: "V1.14.2"
-        control_title: "Build, Deployment, and Managed Component Inventory"
-        relation: "supports"
-        scope: "general"
-
+  title: .NET Assembly Profile, Obfuscation & Single-File Bundle Inventory
+  mappings:
+  - framework: OWASP_ASVS
+    version: 4.0.3
+    control_id: V1.14.2
+    control_title: Build, Deployment, and Managed Component Inventory
+    relation: supports
+    scope: general
 TCP-INTEL-021:
-    title: ".NET Sensitive Metadata API Inventory"
-    mappings:
-      - framework: "CWE"
-        version: "4.16"
-        control_id: "CWE-295 / CWE-502"
-        control_title: "Improper Certificate Validation / Unsafe Deserialization"
-        relation: "supports"
-        scope: "general"
-
+  title: .NET Sensitive Metadata API Inventory
+  mappings:
+  - framework: CWE
+    version: '4.16'
+    control_id: CWE-295 / CWE-502
+    control_title: Improper Certificate Validation / Unsafe Deserialization
+    relation: supports
+    scope: general
 TCP-BRW-001:
-    title: "Browser / AI-Browser Credential & Session Cookie Storage"
-    mappings:
-      - framework: "CWE"
-        version: "4.16"
-        control_id: "CWE-312 / CWE-522"
-        control_title: "Cleartext Storage of Sensitive Information / Insufficiently Protected Credentials"
-        relation: "direct"
-        scope: "general"
-      - framework: "OWASP_ASVS"
-        version: "4.0.3"
-        control_id: "V3.4.1 / V3.4.2"
-        control_title: "Cookie-Based Session Management (Secure and HttpOnly Attributes)"
-        relation: "supports"
-        scope: "general"
-
+  title: Browser / AI-Browser Credential & Session Cookie Storage
+  mappings:
+  - framework: CWE
+    version: '4.16'
+    control_id: CWE-312 / CWE-522
+    control_title: Cleartext Storage of Sensitive Information / Insufficiently Protected
+      Credentials
+    relation: direct
+    scope: general
+  - framework: OWASP_ASVS
+    version: 4.0.3
+    control_id: V3.4.1 / V3.4.2
+    control_title: Cookie-Based Session Management (Secure and HttpOnly Attributes)
+    relation: supports
+    scope: general
 TCP-BRW-002:
-    title: "Dangerous Chromium / Embedded Browser Command-Line Flags"
-    mappings:
-      - framework: "CWE"
-        version: "4.16"
-        control_id: "CWE-16 / CWE-295"
-        control_title: "Configuration Weaknesses & Disabled Sandbox / TLS Validation"
-        relation: "direct"
-        scope: "general"
-
+  title: Dangerous Chromium / Embedded Browser Command-Line Flags
+  mappings:
+  - framework: CWE
+    version: '4.16'
+    control_id: CWE-16 / CWE-295
+    control_title: Configuration Weaknesses & Disabled Sandbox / TLS Validation
+    relation: direct
+    scope: general
 TCP-BRW-003:
-    title: "Over-Privileged Browser Extensions & Native Messaging Hosts"
-    mappings:
-      - framework: "CWE"
-        version: "4.16"
-        control_id: "CWE-250 / CWE-284"
-        control_title: "Execution with Unnecessary Privileges & Improper Access Control"
-        relation: "direct"
-        scope: "general"
-
+  title: Over-Privileged Browser Extensions & Native Messaging Hosts
+  mappings:
+  - framework: CWE
+    version: '4.16'
+    control_id: CWE-250 / CWE-284
+    control_title: Execution with Unnecessary Privileges & Improper Access Control
+    relation: direct
+    scope: general
 TCP-BRW-004:
-    title: "AI Conversation History & MCP Server Configuration Security"
-    mappings:
-      - framework: "CWE"
-        version: "4.16"
-        control_id: "CWE-312 / CWE-798"
-        control_title: "Unencrypted Storage of Sensitive AI Data & Plaintext MCP Secrets"
-        relation: "direct"
-        scope: "general"
-      - framework: "DPDP"
-        version: "2025"
-        control_id: "Sec-8(5)"
-        control_title: "Protection of Personal Data Stored on User Endpoints"
-        relation: "supports"
-        scope: "general"
-
+  title: AI Conversation History & MCP Server Configuration Security
+  mappings:
+  - framework: CWE
+    version: '4.16'
+    control_id: CWE-312 / CWE-798
+    control_title: Unencrypted Storage of Sensitive AI Data & Plaintext MCP Secrets
+    relation: direct
+    scope: general
+  - framework: DPDP
+    version: '2025'
+    control_id: Sec-8(5)
+    control_title: Protection of Personal Data Stored on User Endpoints
+    relation: supports
+    scope: general
 TCP-BRW-005:
-    title: "Embedded Chromium / CEF / Electron Runtime Version Inventory"
-    mappings:
-      - framework: "CWE"
-        version: "4.16"
-        control_id: "CWE-1104"
-        control_title: "Use of Unmaintained Third-Party Components"
-        relation: "supports"
-        scope: "general"
-
+  title: Embedded Chromium / CEF / Electron Runtime Version Inventory
+  mappings:
+  - framework: CWE
+    version: '4.16'
+    control_id: CWE-1104
+    control_title: Use of Unmaintained Third-Party Components
+    relation: supports
+    scope: general
 TCP-COV-001:
-    title: "Assessment Coverage Matrix Telemetry"
-    mappings:
-      - framework: "OWASP_ASVS"
-        version: "4.0.3"
-        control_id: "V1.1.1"
-        control_title: "Verification Scope and Assessment Coverage Transparency"
-        relation: "informational_support"
-        scope: "general"
+  title: Assessment Coverage Matrix Telemetry
+  mappings:
+  - framework: OWASP_ASVS
+    version: 4.0.3
+    control_id: V1.1.1
+    control_title: Verification Scope and Assessment Coverage Transparency
+    relation: informational_support
+    scope: general
