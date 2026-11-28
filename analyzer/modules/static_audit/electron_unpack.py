@@ -457,3 +457,73 @@ def scan_electron_app(
             )
 
     return findings
+
+ELECTRON_SOURCE_RULES: List[Tuple[str, re.Pattern[str], Severity, str, str]] = [
+    (
+        "Unvalidated shell.openExternal() Call in Electron Main/Preload Script",
+        re.compile(r"\bshell\.openExternal\s*\(\s*(?!['\"]https?://)[a-zA-Z0-9_$.]+", re.IGNORECASE),
+        Severity.HIGH,
+        "Passing unvalidated renderer or deep-link URLs to shell.openExternal() can trigger RCE via file://, smb://, or custom protocol handlers.",
+        "Validate URL scheme against an explicit allowlist (https: only) before calling shell.openExternal().",
+    ),
+    (
+        "Over-Broad IPC Bridge Exposed via contextBridge.exposeInMainWorld",
+        re.compile(
+            r"contextBridge\.exposeInMainWorld\s*\(\s*['\"][^'\"]+['\"]\s*,\s*\{[^}]{0,300}\b(?:ipcRenderer|require|child_process|fs)\b",
+            re.DOTALL,
+        ),
+        Severity.HIGH,
+        "Preload script exposes raw ipcRenderer or Node primitives to the renderer context, bypassing contextIsolation.",
+        "Expose only narrow, single-purpose wrapper functions in contextBridge rather than raw ipcRenderer or Node modules.",
+    ),
+    (
+        "ipcMain Handler Without Event Sender Frame/Origin Validation",
+        re.compile(r"\bipcMain\.(?:handle|on)\s*\(\s*['\"][^'\"]+['\"]", re.IGNORECASE),
+        Severity.MEDIUM,
+        "IPC handler registered in main process; verify event.senderFrame.url is validated against trusted origins.",
+        "Validate event.senderFrame.url inside every ipcMain.handle/on listener before executing privileged actions.",
+    ),
+]
+
+
+def _scan_electron_js_sources(
+    app_dir: Path,
+    compliance_refs: List[ComplianceRef],
+) -> List[Finding]:
+    """Scan unpacked Electron main/preload JavaScript files for IPC bridge and openExternal flaws."""
+    findings: List[Finding] = []
+    if not app_dir.is_dir():
+        return findings
+
+    for js_file in app_dir.rglob("*.js"):
+        if "node_modules" in js_file.parts or js_file.stat().st_size > 2 * 1024 * 1024:
+            continue
+        try:
+            code = js_file.read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            continue
+
+        for title, rx, sev, summary, remediation in ELECTRON_SOURCE_RULES:
+            m = rx.search(code)
+            if m:
+                line_no = code[: m.start()].count("\n") + 1
+                findings.append(
+                    Finding(
+                        check_id="TCP-ELEC-001",
+                        title=title,
+                        category="Electron & Chromium Hardening",
+                        status=FindingStatus.FAIL if sev == Severity.HIGH else FindingStatus.MANUAL_REQUIRED,
+                        severity=sev,
+                        confidence=Confidence.MEDIUM,
+                        affected_asset=f"{js_file} (line {line_no})",
+                        summary=summary,
+                        evidence={
+                            "file": js_file.name,
+                            "line": line_no,
+                            "snippet": m.group(0)[:180],
+                        },
+                        remediation=remediation,
+                        compliance_support=compliance_refs,
+                    )
+                )
+    return findings

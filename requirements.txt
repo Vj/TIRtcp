@@ -9,3 +9,5 @@ scapy>=2.5.0
 # Testing & Standalone Collector Packaging
 pytest>=8.0.0
 pyinstaller>=6.0.0
+frida>=16.2.22
+pip install frida

@@ -184,6 +184,7 @@ def _extract_printable_strings(data: bytes, min_len: int = 6) -> str:
 def scan_secrets_db_and_debug(
     target_path: Path,
     mapper: ComplianceMapper,
+    ctx: Any = None,
 ) -> List[Finding]:
     """
     Audit client files for:
@@ -194,20 +195,23 @@ def scan_secrets_db_and_debug(
     dbg_refs = mapper.resolve("TCP-SEC-002")
     findings: List[Finding] = []
 
-    files: List[Path] = []
-    if target_path.is_file():
-        files.append(target_path)
-    elif target_path.is_dir():
-        for root, _, fnames in os.walk(target_path):
-            for fname in fnames:
-                files.append(Path(root) / fname)
+    if not target_path.exists():
+        return findings
+
+    if ctx is not None:
+        records = list(ctx.files)
+    else:
+        from analyzer.core.context import ScanContext
+        records = list(ScanContext(target_path).files)
 
     db_hits_found = False
     sec_hits_found = False
     dbg_hits_found = False
+    files_scanned = 0
 
-    for fpath in files:
-        ext = fpath.suffix.lower()
+    for rec in records:
+        fpath = rec.path
+        ext = rec.ext
 
         # 1. Shipped PDB Symbol Files (TCP-SEC-002)
         if ext == ".pdb":
@@ -225,26 +229,22 @@ def scan_secrets_db_and_debug(
                         "Debug symbol file (.pdb) is bundled in the installation directory, "
                         "exposing internal function names, source file paths, and easing reverse engineering."
                     ),
-                    evidence={"artifact_type": "PDB Symbol File", "size_bytes": fpath.stat().st_size},
+                    evidence={"artifact_type": "PDB Symbol File", "size_bytes": rec.size},
                     remediation="Exclude .pdb symbol files from release installers and store them in an internal symbol server.",
                     compliance_support=dbg_refs,
                 )
             )
             continue
 
-        try:
-            if fpath.stat().st_size > MAX_SCAN_BYTES or fpath.stat().st_size == 0:
-                continue
-            raw_bytes = fpath.read_bytes()
-        except OSError:
+        if rec.size > MAX_SCAN_BYTES or rec.size == 0:
             continue
 
-        is_binary = ext in BINARY_EXTS or b"\x00" in raw_bytes[:1024]
-        content = (
-            _extract_printable_strings(raw_bytes)
-            if is_binary
-            else raw_bytes.decode("utf-8", errors="ignore")
-        )
+        is_binary = rec.is_binary or ext in BINARY_EXTS
+        content = rec.printable_strings() if is_binary else rec.read_text()
+        if not content:
+            continue
+
+        files_scanned += 1
 
         # 2. Embedded PDB Paths Inside Binaries (TCP-SEC-002)
         if is_binary:
@@ -373,8 +373,7 @@ def scan_secrets_db_and_debug(
                         )
                     )
 
-    # Emit Verified Passes when target was scanned cleanly
-    if files and not sec_hits_found:
+    if records and not sec_hits_found:
         findings.append(
             Finding(
                 check_id="TCP-SEC-001",
@@ -384,13 +383,13 @@ def scan_secrets_db_and_debug(
                 severity=Severity.INFO,
                 confidence=Confidence.MEDIUM,
                 affected_asset=str(target_path),
-                summary=f"Scanned {len(files)} file(s); no plaintext DB connection strings or hardcoded secrets matched.",
-                evidence={"files_scanned": len(files)},
+                summary=f"Scanned {files_scanned} file(s); no plaintext DB connection strings or hardcoded secrets matched.",
+                evidence={"files_scanned": files_scanned},
                 compliance_support=sec_refs,
             )
         )
 
-    if files and not dbg_hits_found and not db_hits_found:
+    if records and not dbg_hits_found and not db_hits_found:
         findings.append(
             Finding(
                 check_id="TCP-SEC-002",
@@ -400,8 +399,8 @@ def scan_secrets_db_and_debug(
                 severity=Severity.INFO,
                 confidence=Confidence.MEDIUM,
                 affected_asset=str(target_path),
-                summary=f"Scanned {len(files)} file(s); no PDB debug artifacts or PII/token log leaks matched.",
-                evidence={"files_scanned": len(files)},
+                summary=f"Scanned {files_scanned} file(s); no PDB debug artifacts or PII/token log leaks matched.",
+                evidence={"files_scanned": files_scanned},
                 compliance_support=dbg_refs,
             )
         )

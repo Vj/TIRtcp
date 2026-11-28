@@ -12,7 +12,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, ClassVar, Dict, List, Optional, Tuple
 
 
 class FindingStatus(str, Enum):
@@ -136,7 +136,18 @@ class ScanReport:
         default_factory=lambda: datetime.now(timezone.utc).isoformat()
     )
     findings: List[Finding] = field(default_factory=list)
-
+    ROOT_CAUSE_PATTERNS: ClassVar[Dict[str, Tuple[str, ...]]] = {
+        "uac_elevation": ("uac", "elevated execution", "requireadministrator", "highestavailable"),
+        "unsigned_binary": ("not authenticode-signed", "unsigned binary"),
+        "tls_bypass": (
+            "servercertificatevalidationcallback",
+            "ignore-certificate-errors",
+            "x509trustmanager",
+            "servercertificatecustomvalidationcallback",
+        ),
+        "weak_crypto": ("weak cryptographic", "sha-1 digest", "ecb"),
+    }
+    
     DISCLAIMER = (
         "Regulatory Notice: TIRtcp findings support technical security gap analysis "
         "against referenced frameworks and do not constitute formal regulatory certification."
@@ -145,6 +156,73 @@ class ScanReport:
     def add_finding(self, finding: Finding) -> None:
         self.findings.append(finding)
 
+    # Add inside ScanReport in analyzer/core/schema.py:
+    def compute_risk_score(self) -> Dict[str, Any]:
+        """Compute a deterministic 0-100 risk score weighted by actionable Fail / Retention findings."""
+        weights = {
+            Severity.CRITICAL: 25,
+            Severity.HIGH: 12,
+            Severity.MEDIUM: 5,
+            Severity.LOW: 1,
+            Severity.INFO: 0,
+        }
+        raw_points = 0
+        for f in self.findings:
+            if f.status in (FindingStatus.FAIL, FindingStatus.EVIDENCE_OF_RETENTION):
+                raw_points += weights.get(f.severity, 0)
+
+        score = min(100, raw_points)
+        if score >= 75:
+            rating = "Critical Risk"
+        elif score >= 45:
+            rating = "High Risk"
+        elif score >= 20:
+            rating = "Moderate Risk"
+        else:
+            rating = "Low Risk"
+
+        return {
+            "risk_score": score,
+            "risk_rating": rating,
+            "raw_weighted_points": raw_points,
+        }
+
+    # Add inside ScanReport in analyzer/core/schema.py:
+    ROOT_CAUSE_PATTERNS = {
+        "uac_elevation": ("uac", "elevated execution", "requireadministrator", "highestavailable"),
+        "unsigned_binary": ("not authenticode-signed", "unsigned binary"),
+        "tls_bypass": ("servercertificatevalidationcallback", "ignore-certificate-errors", "x509trustmanager"),
+        "weak_crypto": ("weak cryptographic", "sha-1 digest", "ecb"),
+    }
+
+    def correlate_root_causes(self) -> None:
+        """Merge duplicate cross-module findings on the same asset sharing a root cause."""
+        seen_cause: Dict[tuple[str, str], Finding] = {}
+        kept: List[Finding] = []
+
+        for f in self.findings:
+            low_title = f.title.lower()
+            matched_cause = None
+            for cause, tokens in self.ROOT_CAUSE_PATTERNS.items():
+                if any(tok in low_title for tok in tokens):
+                    matched_cause = cause
+                    break
+
+            if not matched_cause:
+                kept.append(f)
+                continue
+
+            key = (f.affected_asset.lower(), matched_cause)
+            if key not in seen_cause:
+                seen_cause[key] = f
+                kept.append(f)
+            else:
+                primary = seen_cause[key]
+                corrob = primary.evidence.setdefault("corroborated_by", [])
+                corrob.append({"check_id": f.check_id, "title": f.title, "status": f.status.value})
+
+        self.findings = kept
+    
     def summary_counts(self) -> Dict[str, int]:
         counts = {status.value: 0 for status in FindingStatus}
         for f in self.findings:
@@ -310,6 +388,94 @@ class ScanReport:
                 existing.evidence["grouped_assets"] = existing.grouped_assets[:50]
 
         self.findings = [grouped[k] for k in order]
+
+    # -------------------------------------------------------------------------
+    ROOT_CAUSE_PATTERNS: ClassVar[Dict[str, Tuple[str, ...]]] = {
+        "uac_elevation": ("uac", "elevated execution", "requireadministrator", "highestavailable"),
+        "unsigned_binary": ("not authenticode-signed", "unsigned binary"),
+        "tls_bypass": (
+            "servercertificatevalidationcallback",
+            "ignore-certificate-errors",
+            "x509trustmanager",
+            "servercertificatecustomvalidationcallback",
+        ),
+        "weak_crypto": ("weak cryptographic", "sha-1 digest", "ecb"),
+    }
+
+    def correlate_root_causes(self) -> None:
+        """Merge duplicate cross-module findings on the same asset sharing a root cause."""
+        seen_cause: Dict[Tuple[str, str], Finding] = {}
+        kept: List[Finding] = []
+
+        for f in self.findings:
+            low_title = f.title.lower()
+            matched_cause: Optional[str] = None
+            for cause, tokens in self.ROOT_CAUSE_PATTERNS.items():
+                if any(tok in low_title for tok in tokens):
+                    matched_cause = cause
+                    break
+
+            if not matched_cause:
+                kept.append(f)
+                continue
+
+            key = (f.affected_asset.lower(), matched_cause)
+            if key not in seen_cause:
+                seen_cause[key] = f
+                kept.append(f)
+            else:
+                primary = seen_cause[key]
+                corrob = primary.evidence.setdefault("corroborated_by", [])
+                corrob.append(
+                    {
+                        "check_id": f.check_id,
+                        "title": f.title,
+                        "status": f.status.value,
+                    }
+                )
+
+        self.findings = kept
+
+    # -------------------------------------------------------------------------
+    # Add inside ScanReport in analyzer/core/schema.py:
+    def apply_baseline_diff(self, baseline_json_path: Path) -> Dict[str, int]:
+        """Compare current findings against a prior TIRtcp JSON report using SHA-256 fingerprints."""
+        prior = json.loads(baseline_json_path.read_text(encoding="utf-8"))
+        prior_fps = {
+            item["fingerprint"]: item
+            for item in prior.get("findings", [])
+            if item.get("fingerprint") and item.get("status") in ("Fail", "Evidence of Retention")
+        }
+
+        current_fps: set[str] = set()
+        new_count = 0
+        persistent_count = 0
+
+        for f in self.findings:
+            fp = f.fingerprint
+            if f.status in (FindingStatus.FAIL, FindingStatus.EVIDENCE_OF_RETENTION):
+                current_fps.add(fp)
+                if fp in prior_fps:
+                    f.evidence["retest_status"] = "PERSISTENT"
+                    persistent_count += 1
+                else:
+                    f.evidence["retest_status"] = "NEW"
+                    new_count += 1
+            else:
+                f.evidence["retest_status"] = "BASELINE_NON_DEFECT"
+
+        fixed_items = [
+            {"check_id": item.get("check_id"), "title": item.get("title"), "affected_asset": item.get("affected_asset")}
+            for fp, item in prior_fps.items()
+            if fp not in current_fps
+        ]
+
+        return {
+            "new_actionable": new_count,
+            "persistent_actionable": persistent_count,
+            "fixed_since_baseline": len(fixed_items),
+            "fixed_findings": fixed_items,
+        }
 
     # -------------------------------------------------------------------------
     # 3. Single-Format Standalone HTML Projection

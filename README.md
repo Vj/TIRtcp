@@ -123,6 +123,27 @@ tirtcp \
   --engagement-id ENG-2026-014 \
   --output ./reports
 
+# 1. Install optional Frida dependency in .venv
+pip install frida
+
+# 2. Capture 20 seconds of runtime Win32/DPAPI/WinHTTP/DLL hook events
+python .\scripts\frida_hook_harness.py `
+  --target "C:\Users\ADMIN\Downloads\vpro_secret\ModernPaint.exe" `
+  --duration 20 `
+  --authorized `
+  --output .\evidence\ModernPaint\runtime_hooks.json
+
+# 3. Feed runtime_hooks.json into TIRtcp alongside static/host/PCAP evidence
+tirtcp `
+  --target "C:\Users\ADMIN\Downloads\vpro_secret" `
+  --evidence .\evidence\ModernPaint\host_evidence.json `
+  --runtime-hooks .\evidence\ModernPaint\runtime_hooks.json `
+  --authorized `
+  --compliance general `
+  --engagement-id ENG-2026-014 `
+  --no-active-probe `
+  --output .\reports
+
 BFSI / Regulated Payment Assessment (--compliance bfsi):
 Activates PCI DSS v4.0.1 and RBI Digital Payment Security Controls (2021) mappings alongside DPDP Act 2023 / Rules 2025, OWASP ASVS v4.0.3 / MASVS v2.1.0, and CWE:
 tirtcp \

@@ -11,10 +11,11 @@ from __future__ import annotations
 import csv
 import ntpath
 import os
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
 
 from analyzer.core.compliance_loader import ComplianceMapper
+from collections import defaultdict
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Set, Tuple
 from analyzer.core.schema import (
     Confidence,
     Finding,
@@ -280,3 +281,80 @@ def parse_procmon_csv(
         )
 
     return findings
+
+INTEGRITY_RANK = {"low": 1, "medium": 2, "high": 3, "system": 4}
+
+
+def correlate_procmon_events(
+    rows: List[Dict[str, str]],
+    known_os_dlls: Set[str],
+) -> List[Dict[str, Any]]:
+    """
+    Correlate Procmon CSV rows per (Process Name, DLL filename):
+    - Confirmed Hijack: NAME/PATH NOT FOUND in a user-writable directory BEFORE a SUCCESS load
+      of the same DLL from another path.
+    - Phantom DLL Probe: NAME/PATH NOT FOUND in a user-writable directory with no subsequent SUCCESS
+      (still hijackable if placed, though unused or optional at runtime).
+    """
+    per_dll: Dict[Tuple[str, str], Dict[str, Any]] = defaultdict(
+        lambda: {
+            "process": "",
+            "dll": "",
+            "writable_misses": [],
+            "resolved_paths": [],
+            "integrity": "Medium",
+            "integrity_rank": 2,
+        }
+    )
+
+    for row in rows:
+        op = (row.get("Operation") or "").strip()
+        if op not in ("CreateFile", "Load Image"):
+            continue
+
+        raw_path = (row.get("Path") or "").strip()
+        if not raw_path.lower().endswith(".dll"):
+            continue
+
+        dll_name = raw_path.rsplit("\\", 1)[-1].rsplit("/", 1)[-1].lower()
+        if dll_name in known_os_dlls:
+            continue
+
+        proc_name = (row.get("Process Name") or "unknown.exe").strip()
+        result = (row.get("Result") or "").strip().upper()
+        integrity = (row.get("Integrity") or "Medium").strip()
+        rank = INTEGRITY_RANK.get(integrity.lower(), 2)
+
+        entry = per_dll[(proc_name.lower(), dll_name)]
+        entry["process"] = proc_name
+        entry["dll"] = dll_name
+        if rank > entry["integrity_rank"]:
+            entry["integrity"] = integrity
+            entry["integrity_rank"] = rank
+
+        if result in ("NAME NOT FOUND", "PATH NOT FOUND"):
+            if _is_user_writable_windows_path(raw_path) and raw_path not in entry["writable_misses"]:
+                entry["writable_misses"].append(raw_path)
+        elif result == "SUCCESS":
+            # Only count SUCCESS loads that occurred AFTER at least one writable miss
+            if entry["writable_misses"] and raw_path not in entry["resolved_paths"]:
+                entry["resolved_paths"].append(raw_path)
+
+    candidates: List[Dict[str, Any]] = []
+    for entry in per_dll.values():
+        if not entry["writable_misses"]:
+            continue
+        confirmed = bool(entry["resolved_paths"])
+        elevated = entry["integrity_rank"] >= 3  # High or System
+        candidates.append(
+            {
+                "process": entry["process"],
+                "dll": entry["dll"],
+                "classification": "confirmed_hijack" if confirmed else "phantom_dll_probe",
+                "integrity": entry["integrity"],
+                "elevated_process": elevated,
+                "writable_probe_paths": entry["writable_misses"],
+                "subsequent_resolved_paths": entry["resolved_paths"],
+            }
+        )
+    return candidates

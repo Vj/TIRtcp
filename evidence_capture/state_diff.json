@@ -1,0 +1,22 @@
+﻿{
+    "run_key_changes":  {
+
+                        },
+    "target_exe":  null,
+    "created_files":  [
+
+                      ],
+    "modified_files":  [
+                           "C:\\Users\\ADMIN\\AppData\\Roaming\\Microsoft\\Windows\\PowerShell\\PSReadLine\\ConsoleHost_history.txt",
+                           "C:\\Users\\ADMIN\\AppData\\Roaming\\Code\\User\\workspaceStorage\\bca7cf52559b45d9fd495313785342a6\\state.vscdb",
+                           "C:\\Users\\ADMIN\\AppData\\Roaming\\Codex\\web\\Codex\\sentry\\session.json",
+                           "C:\\Users\\ADMIN\\AppData\\Local\\Google\\Chrome\\User Data\\Profile 13\\Network\\Cookies",
+                           "C:\\Users\\ADMIN\\AppData\\Roaming\\Code\\User\\globalStorage\\state.vscdb",
+                           "C:\\Users\\ADMIN\\AppData\\Local\\Google\\DriveFS\\Logs\\structured_log_114388966135501389105",
+                           "C:\\Users\\ADMIN\\AppData\\Local\\Google\\Chrome\\User Data\\Profile 13\\Preferences",
+                           "C:\\Users\\ADMIN\\AppData\\Local\\Google\\DriveFS\\Logs\\structured_log_global",
+                           "C:\\Users\\ADMIN\\AppData\\Roaming\\Code\\CachedData\\69047191fc427f2f92828279aae1d90d8eeda7ab\\chrome\\js\\index-dir\\the-real-index",
+                           "C:\\Users\\ADMIN\\AppData\\Local\\Google\\Chrome\\User Data\\Profile 13\\Network\\Cookies-journal"
+                       ],
+    "captured_at_utc":  "2026-11-28T02:50:27.3053636Z"
+}

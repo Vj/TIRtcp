@@ -12,6 +12,7 @@ def build_coverage_finding(args: Any, ctx: Any, report: Any, host_evidence: Any,
     pes = [r for r in ctx.files if r.is_pe]
     is_single_file = args.target.is_file()
     rows: List[Dict[str, str]] = []
+    
 
     def row(module: str, state: str, why: str, unlock: str = "") -> None:
         rows.append({"module": module, "state": state, "detail": why, "to_unlock": unlock})
@@ -39,6 +40,12 @@ def build_coverage_finding(args: Any, ctx: Any, report: Any, host_evidence: Any,
         "Take a dump after logout, supply --memory-dump --canary-markers --authorized")
     row("Dynamic behaviour (runtime API hooks, registry/file diffs, updater integrity, pinning, tamper tests)", "NOT AUTOMATED YET",
         "No static tool can observe runtime behaviour.", "Use scripts/dynamic_capture.ps1 + the manual playbooks attached to Observation findings")
+    row(
+    "Dynamic behaviour (Frida runtime API hooks)",
+    "RAN" if (getattr(args, "runtime_hooks", None) and args.authorized) else "SKIPPED",
+    "Frida runtime trace supplied" if getattr(args, "runtime_hooks", None) else "No runtime hook trace.",
+    "Run scripts/frida_hook_harness.py --authorized and pass --runtime-hooks runtime_hooks.json",
+    )
     not_run = [r for r in rows if not r["state"].startswith(("RAN", "N/A"))]
     return Finding(
         check_id="TCP-COV-001", title="Assessment Coverage Matrix (What Was And Was Not Tested)", category="Orchestrator Telemetry",

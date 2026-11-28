@@ -1,0 +1,39 @@
+{
+  "schema_version": "1.0.0",
+  "updated_utc": "2026-11-28T00:00:00Z",
+  "advisories": [
+    {
+      "id": "GHSA-5crp-9r3c-p9vr",
+      "cve": "CVE-2024-21907",
+      "ecosystem": "NuGet",
+      "package": "Newtonsoft.Json",
+      "fixed_version": "13.0.1",
+      "severity": "High",
+      "cisa_kev": false,
+      "epss": 0.42,
+      "summary": "Improper handling of exceptional conditions in Newtonsoft.Json causing StackOverflowException DoS."
+    },
+    {
+      "id": "GHSA-jfh8-c2jp-5v3q",
+      "cve": "CVE-2021-44228",
+      "ecosystem": "Maven",
+      "package": "org.apache.logging.log4j:log4j-core",
+      "fixed_version": "2.17.1",
+      "severity": "Critical",
+      "cisa_kev": true,
+      "epss": 0.97,
+      "summary": "Apache Log4j2 JNDI remote code execution vulnerability (Log4Shell)."
+    },
+    {
+      "id": "GHSA-6vrh-4526-6638",
+      "cve": "CVE-2023-4863",
+      "ecosystem": "npm",
+      "package": "electron",
+      "fixed_version": "26.2.1",
+      "severity": "Critical",
+      "cisa_kev": true,
+      "epss": 0.94,
+      "summary": "Heap buffer overflow in libwebp affecting Electron/Chromium renderers."
+    }
+  ]
+}

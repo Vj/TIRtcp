@@ -404,3 +404,229 @@ electron:
   min_supported_major: 31
   supported_majors: [31, 32, 33]
   advisory: "Unsupported Electron versions bundle end-of-life Chromium/V8 engines with publicly known renderer sandbox escapes."
+
+TCP-INTEL-001:
+    title: "Application Technology & Build Profile"
+    mappings:
+      - framework: "OWASP_ASVS"
+        version: "4.0.3"
+        control_id: "V1.1.2"
+        control_title: "Application Architecture and Component Inventory"
+        relation: "supports"
+        scope: "general"
+
+TCP-INTEL-002:
+    title: "Packed, Protected, or Self-Modifying Binary Indicators"
+    mappings:
+      - framework: "CWE"
+        version: "4.16"
+        control_id: "CWE-506"
+        control_title: "Embedded Malicious or Obfuscated Code Behavior"
+        relation: "supports"
+        scope: "general"
+
+TCP-INTEL-003:
+    title: "Imported Capability & Memory-Unsafe CRT API Leads"
+    mappings:
+      - framework: "CWE"
+        version: "4.16"
+        control_id: "CWE-676"
+        control_title: "Use of Potentially Dangerous Function"
+        relation: "direct"
+        scope: "general"
+      - framework: "OWASP_ASVS"
+        version: "4.0.3"
+        control_id: "V5.4.1"
+        control_title: "Memory, String, and Unmanaged Code Safety"
+        relation: "supports"
+        scope: "general"
+
+TCP-INTEL-004:
+    title: "Offline Authenticode Integrity & Signing Metadata"
+    mappings:
+      - framework: "CWE"
+        version: "4.16"
+        control_id: "CWE-345"
+        control_title: "Insufficient Verification of Data Authenticity"
+        relation: "direct"
+        scope: "general"
+      - framework: "OWASP_MASVS"
+        version: "2.1.0"
+        control_id: "MASVS-RESILIENCE-1"
+        control_title: "Binary Integrity and Code-Signing Verification"
+        relation: "supports"
+        scope: "general"
+
+TCP-INTEL-005:
+    title: "PE Manifest UAC Privilege & Metadata Hygiene"
+    mappings:
+      - framework: "CWE"
+        version: "4.16"
+        control_id: "CWE-250"
+        control_title: "Execution with Unnecessary Privileges"
+        relation: "direct"
+        scope: "general"
+
+TCP-INTEL-010:
+    title: "Hard-Coded Network & Telemetry Endpoint Inventory"
+    mappings:
+      - framework: "CWE"
+        version: "4.16"
+        control_id: "CWE-319"
+        control_title: "Cleartext Transmission of Sensitive Information"
+        relation: "supports"
+        scope: "general"
+      - framework: "DPDP"
+        version: "2025"
+        control_id: "Sec-8(5)"
+        control_title: "Reasonable Security Safeguards & Third-Party Data Egress Control"
+        relation: "supports"
+        scope: "general"
+
+TCP-INTEL-011:
+    title: "Direct Database or Broker Endpoint Referenced by Client"
+    mappings:
+      - framework: "OWASP_DESKTOP"
+        version: "1.0"
+        control_id: "DA1"
+        control_title: "Improper Two-Tier Client-Database Architecture"
+        relation: "direct"
+        scope: "general"
+
+TCP-INTEL-012:
+    title: "Hard-Coded Secrets or Cryptographic Key Material"
+    mappings:
+      - framework: "CWE"
+        version: "4.16"
+        control_id: "CWE-798 / CWE-321"
+        control_title: "Use of Hard-coded Credentials / Cryptographic Key"
+        relation: "direct"
+        scope: "general"
+      - framework: "RBI_DPSC"
+        version: "2021"
+        control_id: "Para-12"
+        control_title: "Protection of Cryptographic Keys and Credentials"
+        relation: "supports"
+        scope: "bfsi"
+
+TCP-INTEL-013:
+    title: "Weak Cryptographic Algorithm or Cipher Mode References"
+    mappings:
+      - framework: "CWE"
+        version: "4.16"
+        control_id: "CWE-327"
+        control_title: "Use of a Broken or Risky Cryptographic Algorithm"
+        relation: "direct"
+        scope: "general"
+
+TCP-INTEL-014:
+    title: "Embedded SQL, OS Commands, Registry & Writable-Path Leads"
+    mappings:
+      - framework: "CWE"
+        version: "4.16"
+        control_id: "CWE-89 / CWE-78"
+        control_title: "Improper Neutralization of Special Elements in SQL / OS Commands"
+        relation: "supports"
+        scope: "general"
+
+TCP-INTEL-015:
+    title: "Debug, Test, or Security-Bypass Switches"
+    mappings:
+      - framework: "CWE"
+        version: "4.16"
+        control_id: "CWE-489"
+        control_title: "Active Debug Code"
+        relation: "direct"
+        scope: "general"
+
+TCP-INTEL-020:
+    title: ".NET Assembly Profile, Obfuscation & Single-File Bundle Inventory"
+    mappings:
+      - framework: "OWASP_ASVS"
+        version: "4.0.3"
+        control_id: "V1.14.2"
+        control_title: "Build, Deployment, and Managed Component Inventory"
+        relation: "supports"
+        scope: "general"
+
+TCP-INTEL-021:
+    title: ".NET Sensitive Metadata API Inventory"
+    mappings:
+      - framework: "CWE"
+        version: "4.16"
+        control_id: "CWE-295 / CWE-502"
+        control_title: "Improper Certificate Validation / Unsafe Deserialization"
+        relation: "supports"
+        scope: "general"
+
+TCP-BRW-001:
+    title: "Browser / AI-Browser Credential & Session Cookie Storage"
+    mappings:
+      - framework: "CWE"
+        version: "4.16"
+        control_id: "CWE-312 / CWE-522"
+        control_title: "Cleartext Storage of Sensitive Information / Insufficiently Protected Credentials"
+        relation: "direct"
+        scope: "general"
+      - framework: "OWASP_ASVS"
+        version: "4.0.3"
+        control_id: "V3.4.1 / V3.4.2"
+        control_title: "Cookie-Based Session Management (Secure and HttpOnly Attributes)"
+        relation: "supports"
+        scope: "general"
+
+TCP-BRW-002:
+    title: "Dangerous Chromium / Embedded Browser Command-Line Flags"
+    mappings:
+      - framework: "CWE"
+        version: "4.16"
+        control_id: "CWE-16 / CWE-295"
+        control_title: "Configuration Weaknesses & Disabled Sandbox / TLS Validation"
+        relation: "direct"
+        scope: "general"
+
+TCP-BRW-003:
+    title: "Over-Privileged Browser Extensions & Native Messaging Hosts"
+    mappings:
+      - framework: "CWE"
+        version: "4.16"
+        control_id: "CWE-250 / CWE-284"
+        control_title: "Execution with Unnecessary Privileges & Improper Access Control"
+        relation: "direct"
+        scope: "general"
+
+TCP-BRW-004:
+    title: "AI Conversation History & MCP Server Configuration Security"
+    mappings:
+      - framework: "CWE"
+        version: "4.16"
+        control_id: "CWE-312 / CWE-798"
+        control_title: "Unencrypted Storage of Sensitive AI Data & Plaintext MCP Secrets"
+        relation: "direct"
+        scope: "general"
+      - framework: "DPDP"
+        version: "2025"
+        control_id: "Sec-8(5)"
+        control_title: "Protection of Personal Data Stored on User Endpoints"
+        relation: "supports"
+        scope: "general"
+
+TCP-BRW-005:
+    title: "Embedded Chromium / CEF / Electron Runtime Version Inventory"
+    mappings:
+      - framework: "CWE"
+        version: "4.16"
+        control_id: "CWE-1104"
+        control_title: "Use of Unmaintained Third-Party Components"
+        relation: "supports"
+        scope: "general"
+
+TCP-COV-001:
+    title: "Assessment Coverage Matrix Telemetry"
+    mappings:
+      - framework: "OWASP_ASVS"
+        version: "4.0.3"
+        control_id: "V1.1.1"
+        control_title: "Verification Scope and Assessment Coverage Transparency"
+        relation: "informational_support"
+        scope: "general"
