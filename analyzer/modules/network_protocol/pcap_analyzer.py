@@ -29,7 +29,10 @@ from analyzer.core.schema import (
 from analyzer.modules.network_protocol.tls_records import parse_tls_hello
 
 try:
-    from scapy.all import IP, IPv6, PcapReader, Raw, TCP, UDP  # type: ignore
+    from scapy.utils import PcapReader  # type: ignore
+    from scapy.layers.inet import IP, TCP, UDP  # type: ignore
+    from scapy.layers.inet6 import IPv6  # type: ignore
+    from scapy.packet import Raw  # type: ignore
     HAS_SCAPY = True
 except ImportError:
     HAS_SCAPY = False

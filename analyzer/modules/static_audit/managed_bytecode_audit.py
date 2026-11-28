@@ -27,6 +27,7 @@ from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 from xml.etree import ElementTree as ET
 
 from analyzer.core.compliance_loader import ComplianceMapper
+from analyzer.modules.static_audit.dotnet_intel import analyze_dotnet, HAS_DNFILE
 from analyzer.core.schema import (
     ComplianceRef,
     ComplianceRelation,
@@ -439,48 +440,62 @@ def _audit_dotnet_assembly(
     compliance_refs: List[ComplianceRef],
     mapper: ComplianceMapper,
 ) -> List[Finding]:
+    """Reuse analyze_dotnet() metadata extraction so dnfile parses each PE only once."""
     if not _has_clr_header(raw_bytes):
         return []
 
     if HAS_DNFILE:
         try:
-            return _audit_dotnet_with_dnfile(bin_path, compliance_refs)
+            info = analyze_dotnet(bin_path)
+            if not info:
+                return []
+
+            findings: List[Finding] = []
+            matched_sinks: List[Dict[str, str]] = []
+            highest_sev = Severity.MEDIUM
+
+            for rule_title, type_sub, member_name, sev, risk_desc in DOTNET_METADATA_SINKS:
+                for parent_type, m_name in info["member_refs"]:
+                    if type_sub in parent_type and (member_name is None or member_name == m_name):
+                        matched_sinks.append(
+                            {
+                                "rule": rule_title,
+                                "type": parent_type,
+                                "member": m_name,
+                                "risk": risk_desc,
+                            }
+                        )
+                        if sev == Severity.HIGH:
+                            highest_sev = Severity.HIGH
+                        break
+
+            if matched_sinks:
+                findings.append(
+                    Finding(
+                        check_id="TCP-MGD-001",
+                        title=f"Risky .NET Metadata API Call(s) Referenced ({len(matched_sinks)} Sink(s))",
+                        category="Managed Code & .NET Metadata",
+                        status=FindingStatus.FAIL,
+                        severity=highest_sev,
+                        confidence=Confidence.HIGH,
+                        affected_asset=str(bin_path),
+                        summary=(
+                            f"CLR MemberRef metadata references {len(matched_sinks)} high-risk .NET API(s): "
+                            f"{', '.join(s['rule'] for s in matched_sinks)}."
+                        ),
+                        evidence={"parser": "dnfile (shared)", "matched_member_refs": matched_sinks},
+                        remediation=(
+                            "Replace unsafe formatters with System.Text.Json / DataContractSerializer, enforce "
+                            "TypeNameHandling.None, and validate TLS certificates and dynamic assemblies."
+                        ),
+                        compliance_support=compliance_refs,
+                    )
+                )
+            return findings
         except Exception:
             pass
 
-    # Fallback when dnfile is not installed: conservative TypeRef ASCII check + Tooling Gap notice
-    findings: List[Finding] = [
-        Finding(
-            check_id="TCP-MGD-001",
-            title="CLR Metadata Parser (dnfile) Unavailable — Fallback String Inspection Used",
-            category="Managed Code & .NET Metadata",
-            status=FindingStatus.TOOLING_GAP,
-            severity=Severity.INFO,
-            confidence=Confidence.HIGH,
-            affected_asset=str(bin_path),
-            summary="Install 'dnfile' (`pip install dnfile`) for exact .NET TypeRef, MemberRef, and #US heap analysis.",
-            evidence={"missing_package": "dnfile"},
-            remediation="pip install dnfile",
-            compliance_support=compliance_refs,
-        )
-    ]
-    if b"System.Runtime.Serialization.Formatters.Binary" in raw_bytes and b"BinaryFormatter" in raw_bytes:
-        findings.append(
-            Finding(
-                check_id="TCP-MGD-001",
-                title="BinaryFormatter Namespace & Type Referenced in .NET Assembly",
-                category="Managed Code & .NET Metadata",
-                status=FindingStatus.FAIL,
-                severity=Severity.HIGH,
-                confidence=Confidence.MEDIUM,
-                affected_asset=str(bin_path),
-                summary="Assembly metadata contains both BinaryFormatter namespace and type tokens.",
-                evidence={"parser": "fallback_clr_strings"},
-                remediation="Replace BinaryFormatter with System.Text.Json or DataContractSerializer.",
-                compliance_support=compliance_refs,
-            )
-        )
-    return findings
+    return []
 
 
 # ---------------------------------------------------------------------------

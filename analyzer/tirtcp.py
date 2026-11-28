@@ -31,8 +31,6 @@ import sys
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
-from yaml import parser
-
 from analyzer.core.compliance_loader import ComplianceMapper
 from analyzer.core.context import ScanContext
 from analyzer.core.scope import NetworkScope
@@ -55,6 +53,12 @@ from analyzer.modules.static_audit.sca_fingerprint import scan_dependencies_and_
 from analyzer.modules.static_audit.secrets_db_audit import scan_secrets_db_and_debug
 from analyzer.modules.static_audit.signature_audit import scan_code_signatures
 from analyzer.modules.static_audit.managed_bytecode_audit import scan_managed_bytecode
+from analyzer.modules.static_audit.pe_profile import scan_pe_profiles
+from analyzer.modules.static_audit.string_intel import scan_string_intel
+from analyzer.modules.static_audit.dotnet_intel import scan_dotnet_intel
+from analyzer.modules.static_audit.dotnet_bundle import extract_bundle
+from analyzer.core.coverage import build_coverage_finding
+from analyzer.modules.static_audit.browser_profile_audit import scan_browser_artifacts
 
 
 def parse_args() -> argparse.Namespace:
@@ -269,6 +273,52 @@ def main() -> int:
     scan_ctx = ScanContext(args.target)
     net_scope = NetworkScope(args.scope_file)
     print(f"Target Inventory   : {len(scan_ctx.files)} file(s) indexed")
+
+    # -------------------------------------------------------------------------
+    # PHASE 0: Binary & String Intelligence (works even on a single EXE)
+    # -------------------------------------------------------------------------
+    print("\n[Phase 0] Binary, String & .NET Intelligence (attack-surface profiling)")
+    binary_endpoints: set[tuple[str, int]] = set()
+    _run_stage("PE profile: stack, packing, capabilities, Authenticode (offline), manifest", "TCP-INTEL-001", str(args.target),
+               lambda: scan_pe_profiles(args.target, mapper, ctx=scan_ctx), report)
+    _run_stage("String intelligence: endpoints, secrets, crypto material, SQL, commands", "TCP-INTEL-010", str(args.target),
+               lambda: scan_string_intel(args.target, mapper, ctx=scan_ctx, endpoints_out=binary_endpoints), report)
+    _run_stage(".NET metadata intelligence: profile, P/Invoke, sensitive-API inventory", "TCP-INTEL-020", str(args.target),
+               lambda: scan_dotnet_intel(args.target, mapper, ctx=scan_ctx), report)
+
+    _run_stage("Browser / AI-browser artifacts: credential stores, flags, extensions, AI data at rest", "TCP-BRW-001", str(args.target),
+               lambda: scan_browser_artifacts(args.target, mapper, ctx=scan_ctx), report)
+
+    # .NET single-file bundles hide every assembly inside the EXE: extract, then re-run the managed/string analysers
+    bundle_summaries: List[Dict[str, Any]] = []
+    for rec in scan_ctx.iter_binaries():
+        if not rec.is_pe or rec.ext not in (".exe", ""):
+            continue
+        try:
+            extracted = extract_bundle(rec.path)
+        except Exception as exc:  # malformed bundle must not abort the scan
+            print(f"     [!] bundle extraction failed for {rec.path.name}: {exc}", file=sys.stderr)
+            continue
+        if not extracted:
+            continue
+        bundle_summaries.append({"host": rec.path.name, "files": len(extracted["files"]), "version": extracted["bundle_version"]})
+        print(f"  -> .NET single-file bundle in {rec.path.name}: {len(extracted['files'])} embedded file(s) extracted")
+        sub_ctx = ScanContext(extracted["dir"])
+        label = f"bundle:{rec.path.name}"
+        before = len(report.findings)
+        _run_stage(f"Embedded assemblies of {rec.path.name}: .NET intelligence", "TCP-INTEL-020", label,
+                   lambda: scan_dotnet_intel(extracted["dir"], mapper, ctx=sub_ctx, path_prefix=(extracted["dir"], label)), report)
+        _run_stage(f"Embedded assemblies of {rec.path.name}: managed bytecode audit", "TCP-MGD-001", label,
+                   lambda: scan_managed_bytecode(extracted["dir"], mapper), report)
+        _run_stage(f"Embedded assemblies of {rec.path.name}: string intelligence", "TCP-INTEL-010", label,
+                   lambda: scan_string_intel(extracted["dir"], mapper, ctx=sub_ctx, endpoints_out=binary_endpoints), report)
+        for fnd in report.findings[before:]:
+            fnd.affected_asset = fnd.affected_asset.replace(str(extracted["dir"]), label)
+        report.add_finding(Finding(
+            check_id="TCP-INTEL-020", title=".NET Single-File Bundle Unpacked for Analysis", category=".NET Intelligence",
+            status=FindingStatus.OBSERVATION, severity=Severity.INFO, confidence=Confidence.HIGH, affected_asset=str(rec.path),
+            summary=f"{len(extracted['files'])} embedded file(s) (bundle v{extracted['bundle_version']}) were extracted and analysed; without this step they are invisible.",
+            evidence={"files": extracted["files"][:80], "skipped": extracted["skipped"]}))
     # -------------------------------------------------------------------------
     # PHASE 1: Static Binary, Signatures, Secrets/DB/Logs, Hybrid SCA & ACLs
     # -------------------------------------------------------------------------
@@ -346,7 +396,7 @@ def main() -> int:
                 args.target,
                 mapper,
                 explicit_endpoints=args.endpoints,
-                extra_discovered_endpoints=pcap_endpoints,
+                extra_discovered_endpoints=pcap_endpoints | binary_endpoints,
                 scope=net_scope,
             ),
             report,
@@ -371,7 +421,7 @@ def main() -> int:
         "TCP-HOST-002",
         str(args.procmon_csv or args.target),
         lambda: parse_procmon_csv(
-            procmon_csv_path=args.procmon_csv if args.procmon_csv else Path(),
+            procmon_csv_path=args.procmon_csv,
             mapper=mapper,
             target_path=args.target,
             host_evidence=host_evidence,
@@ -417,6 +467,7 @@ def main() -> int:
     # -------------------------------------------------------------------------
     # Report Export & Executive Summary
     # -------------------------------------------------------------------------
+    report.add_finding(build_coverage_finding(args, scan_ctx, report, host_evidence, bundle_summaries))
     if not args.no_group:
         report.deduplicate_findings()
     safe_stem = "".join(c if c.isalnum() or c in ("-", "_") else "_" for c in args.target.stem)
@@ -434,7 +485,7 @@ def main() -> int:
     print(
         f"Status Breakdown   : Fail={counts['Fail']} | Verified Pass={counts['Verified Pass']} | "
         f"Retention Evidence={counts['Evidence of Retention']} | "
-        f"Manual Required={counts['Manual Required']} | Tooling Gap={counts['Tooling Gap']}"
+        f"Manual Required={counts['Manual Required']} | Tooling Gap={counts['Tooling Gap']} | Observations={counts['Observation']}"
     )
     print(
         f"Actionable Severity: Critical={sev_breakdown['Critical']} | High={sev_breakdown['High']} | "

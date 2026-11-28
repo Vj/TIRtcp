@@ -22,6 +22,7 @@ class FindingStatus(str, Enum):
     EVIDENCE_OF_RETENTION = "Evidence of Retention"  # Used for noisy runtime/memory artifacts
     TOOLING_GAP = "Tooling Gap"                      # External binary/permission unavailable
     MANUAL_REQUIRED = "Manual Required"              # Requires human GUI/playbook verification
+    OBSERVATION = "Observation"                      # Informational intelligence / test lead (not a defect)
 
 
 class Severity(str, Enum):
@@ -113,6 +114,7 @@ class Finding:
     def to_dict(self) -> Dict[str, Any]:
         """Serialize finding into a clean dictionary with Enum values resolved."""
         raw = asdict(self)
+        raw["fingerprint"] = self.fingerprint
         raw["status"] = self.status.value
         raw["severity"] = self.severity.value
         raw["confidence"] = self.confidence.value
@@ -187,7 +189,7 @@ class ScanReport:
 
         for f in self.findings:
             # Skip pure passes in SARIF alerts while keeping Gaps/Manual/Fails/Retention
-            if f.status == FindingStatus.VERIFIED_PASS:
+            if f.status in (FindingStatus.VERIFIED_PASS, FindingStatus.OBSERVATION):
                 continue
 
             if f.check_id not in rules_map:
@@ -323,7 +325,9 @@ class ScanReport:
                 FindingStatus.EVIDENCE_OF_RETENTION: "badge-warn",
                 FindingStatus.TOOLING_GAP: "badge-gap",
                 FindingStatus.MANUAL_REQUIRED: "badge-manual",
-            }[status]
+                FindingStatus.OBSERVATION: "badge-obs",
+                FindingStatus.NOT_ASSESSED: "badge-gap",
+            }.get(status, "badge-gap")
 
         cards_html: List[str] = []
         for f in self.findings:
@@ -396,7 +400,8 @@ class ScanReport:
   h1 {{ margin: 0 0 8px 0; font-size: 22px; color: #f8fafc; }}
   .sub {{ font-size: 13px; color: #94a3b8; }}
   .disclaimer {{ margin-top: 12px; padding: 10px 12px; background: #0f172a; border-radius: 6px; font-size: 12px; color: #cbd5e1; }}
-  .kpis {{ display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 24px; }}
+  .badge-obs {{ background: #0e7490; color: #cffafe; }}
+  .kpis {{ display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 24px; }}
   .kpi {{ background: #1e293b; padding: 14px; border-radius: 8px; text-align: center; }}
   .kpi .num {{ font-size: 24px; font-weight: 700; color: #f8fafc; }}
   .kpi .lbl {{ font-size: 12px; color: #94a3b8; margin-top: 4px; }}
@@ -438,6 +443,7 @@ class ScanReport:
     <div class="kpi"><div class="num">{counts['Evidence of Retention']}</div><div class="lbl">Retention Evidence</div></div>
     <div class="kpi"><div class="num">{counts['Manual Required']}</div><div class="lbl">Manual Required</div></div>
     <div class="kpi"><div class="num">{counts['Tooling Gap']}</div><div class="lbl">Tooling Gap</div></div>
+    <div class="kpi"><div class="num">{counts['Observation']}</div><div class="lbl">Observations</div></div>
   </div>
 
   {''.join(cards_html)}
