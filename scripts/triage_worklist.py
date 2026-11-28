@@ -18,6 +18,22 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 
+def _build_playbook(finding_cls: Any, raw_pb: Any) -> Any:
+    if not isinstance(raw_pb, dict):
+        return raw_pb
+    import dataclasses, typing
+    hints = typing.get_type_hints(finding_cls)
+    pb_hint = hints.get("manual_playbook")
+    pb_cls = next(
+        (a for a in (typing.get_args(pb_hint) or (pb_hint,)) if dataclasses.is_dataclass(a)),
+        None,
+    )
+    if pb_cls is not None:
+        valid = {f.name for f in dataclasses.fields(pb_cls)}
+        return pb_cls(**{k: v for k, v in raw_pb.items() if k in valid})
+    return raw_pb
+
+
 def _rerender_outputs(report_data: Dict[str, Any], json_dest: Path) -> Dict[str, Path]:
     from analyzer.core.schema import (
         ComplianceRef,
@@ -44,16 +60,13 @@ def _rerender_outputs(report_data: Dict[str, Any], json_dest: Path) -> Dict[str,
 
     for item in report_data.get("findings", []):
         refs: List[ComplianceRef] = []
+        import dataclasses
+        valid_ref_fields = {f.name for f in dataclasses.fields(ComplianceRef)}
         for c in item.get("compliance_support", []):
-            refs.append(
-                ComplianceRef(
-                    framework=c.get("framework", ""),
-                    control_id=c.get("control_id", ""),
-                    title=c.get("title", ""),
-                    relation=rel_by_val.get(c.get("relation", ""), ComplianceRelation.DIRECT_TECHNICAL_EVIDENCE),
-                    rationale=c.get("rationale", ""),
-                )
-            )
+            kw = {k: v for k, v in c.items() if k in valid_ref_fields}
+            if "relation" in valid_ref_fields:
+                kw["relation"] = rel_by_val.get(c.get("relation", ""), next(iter(ComplianceRelation)))
+            refs.append(ComplianceRef(**kw))
         rep.add_finding(
             Finding(
                 check_id=item.get("check_id", "TCP-TRIAGE"),
@@ -66,7 +79,7 @@ def _rerender_outputs(report_data: Dict[str, Any], json_dest: Path) -> Dict[str,
                 summary=item.get("summary", ""),
                 evidence=item.get("evidence") or {},
                 remediation=item.get("remediation", ""),
-                manual_playbook=item.get("manual_playbook", ""),
+                manual_playbook=_build_playbook(Finding, item.get("manual_playbook")),
                 compliance_support=refs,
             )
         )
