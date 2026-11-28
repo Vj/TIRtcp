@@ -1,13 +1,18 @@
-# Core Analyzer Dependencies (Phases 1-4)
+# Core Configuration & CLI
 PyYAML>=6.0.1
-lief>=0.14.0
-pefile>=2023.2.7
 
-# Optional Network Acceleration (Falls back to pure-Python PCAP parser if absent)
+# Binary, PE & Authenticode Inspection
+dnfile>=0.15.0
+asn1crypto>=1.5.1
+
+# Network & PCAP/PCAPNG Analysis
 scapy>=2.5.0
+dpkt>=1.9.8
 
-# Testing & Standalone Collector Packaging
+# Optional Reporting & Runtime Instrumentation
+weasyprint>=62.0
+frida>=16.2.0
+
+# Testing & Standalone Release Packaging
 pytest>=8.0.0
-pyinstaller>=6.0.0
-frida>=16.2.22
-pip install frida
+pyinstaller>=6.10.0

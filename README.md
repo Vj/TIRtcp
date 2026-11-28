@@ -1,168 +1,101 @@
-# TIRtcp — Thick Client Penetration Testing & Compliance Scanner
+# TIRtcp — Thick-Client Security & Compliance Scanner (v1.0.0)
 
-**TIRtcp** is the desktop/thick-client security and compliance assessment module in the **TIR** suite (alongside **TIR** for Android, **TIRiOS**, and **TIRweb**).
-
-It decouples **target-host evidence gathering** (`collector/`) from **cross-platform offline analysis** (`analyzer/`), emits every finding in a **canonical JSON schema** (projecting cleanly to **HTML**, **JSON**, and **SARIF v2.1.0**), and maps technical evidence to global and Indian regulatory frameworks.
+**TIRtcp** is an offline-first, 4-phase security auditing and compliance verification engine built for enterprise Windows thick clients (`.NET`, Electron/Chromium, Java, and native `C/C++` PE binaries). It combines single-pass static binary intelligence, network wire-protocol inspection, managed framework & IPC auditing, and authorization-gated runtime hygiene into executive HTML, JSON, SARIF v2.1.0, and PDF reports.
 
 ---
 
-## 1. Repository Layout
+## Key Capabilities
 
-```text
-TIRtcp/
-├── collector/
-│   └── collect_host.py             # Zero-dependency Windows host evidence collector
-├── analyzer/
-│   ├── tirtcp.py                   # Unified CLI orchestrator (Phases 1–4)
-│   ├── core/
-│   │   ├── schema.py               # Canonical Finding schema + JSON/SARIF/HTML exporters
-│   │   ├── compliance_loader.py    # Profile-filtered YAML compliance hydrator
-│   │   └── auth_gate.py            # --authorized + --engagement-id governance gate
-│   └── modules/
-│       ├── static_audit/           # Binary mitigations, Authenticode/codesign, secrets/DB/logs, hybrid SCA, Electron, .NET/Java
-│       ├── host_offline/           # Filesystem/updater ACLs, static IAT + Procmon DLL hijack parser, IPC/COM/URI audit
-│       ├── network_protocol/       # Non-HTTP TLS inspector & offline PCAP wire-protocol analyzer
-│       └── runtime_gated/          # Authorization-gated post-logout memory retention scanner
-├── config/
-│   └── compliance_map.yaml         # Versioned framework controls & scope filters
-└── tests/
-    └── test_tirtcp.py              # Unified pytest regression suite
+### Phase 0: Attack-Surface & Binary Intelligence
+* **PE Profiling & Offline Authenticode Verification:** Identifies compiler toolchains, packers, capabilities, UAC manifest elevation (`requireAdministrator`), and verifies embedded PKCS#7 Authenticode digests and certificate chains offline.
+* **String & Secret Intelligence:** Detects cleartext endpoints, hardcoded API keys/tokens, database connection strings, SQL queries, and PII with automatic secret redaction in report artifacts.
+* **.NET & AI-Browser / Chromium Audits:** Inventories P/Invoke declarations and sensitive APIs in `.NET` assemblies, and audits embedded Chromium/AI-browser profiles for plaintext credentials, insecure cookie flags, dangerous launch switches, over-privileged extensions, and unencrypted MCP/LLM API keys.
 
-TIRtcp/
-├── collector/
-│   └── collect_host.py                     # Zero-dependency Windows evidence gatherer
-├── analyzer/
-│   ├── tirtcp.py                           # Unified Phases 1–4 CLI orchestrator
-│   ├── core/
-│   │   ├── schema.py                       # Canonical Finding model + JSON/SARIF/HTML projectors
-│   │   ├── compliance_loader.py            # Scope-aware YAML hydration (general vs. bfsi)
-│   │   └── auth_gate.py                    # --authorized + --engagement-id governance gate
-│   └── modules/
-│       ├── static_audit/
-│       │   ├── binary_hardening.py         # PE (x64 & x86-only SafeSEH), ELF, Mach-O mitigations
-│       │   ├── signature_audit.py          # signtool / osslsigncode / codesign chain & timestamp
-│       │   ├── secrets_db_audit.py         # Direct DB strings, secrets, PDBs, DPDP PII log leaks
-│       │   ├── sca_fingerprint.py          # Syft/Trivy/Grype + native C/C++ DLL version banners
-│       │   └── electron_unpack.py          # Electron Fuses, pure-Python ASAR reader & webPreferences
-│       ├── host_offline/
-│       │   ├── acl_installer.py            # Live/offline directory & auto-update ACL checks
-│       │   ├── dll_hijack_parser.py        # Static IAT + Procmon NAME NOT FOUND CSV analyzer
-│       │   └── ipc_uri_audit.py            # Named Pipes, COM/DCOM, SYSTEM tasks & custom URI handlers
-│       ├── network_protocol/
-│       │   ├── tls_inspector.py            # Non-HTTP TLS 1.0/1.1, weak cipher & certificate checker
-│       │   └── pcap_analyzer.py            # Scapy + pure-Python PCAP DB wire/cleartext/HTTP updater
-│       └── runtime_gated/
-│           └── memory_retention.py         # Gated post-logout dump canary scanner with confidence scores
-├── config/
-│   └── compliance_map.yaml                 # Versioned PCI DSS v4.0.1, ASVS, MASVS, DPDP, RBI, CERT-In map
-└── tests/
-    └── test_tirtcp.py                 # pytest validation suite
+### Phase 1: Static Binary Hardening, Supply-Chain & Host ACLs
+* **Exploit Mitigations (`TCP-BIN-001`):** Audits PE/ELF/Mach-O headers for `ASLR`, 64-bit `High-Entropy ASLR`, `DEP/NX`, `Control Flow Guard (CFG)`, `Intel CET Shadow Stack`, `SafeSEH`, and `FORCE_INTEGRITY`.
+* **Native Crypto & Anti-Tamper (`TCP-BIN-003`):** Flags embedded AES Rijndael S-boxes, non-cryptographic PRNG imports (`rand`/`srand`/`RtlRandom`), and extracts hardcoded TLS `sha256/...` SPKI pins and PEM trust anchors.
+* **Air-Gapped SCA & KEV/EPSS Matching (`TCP-SCA-001`):** Fingerprints bundled C/C++ DLLs (`OpenSSL`, `libcurl`, `SQLite3`, `zlib`, `CEF`, `Qt`) and matches package manifests against an offline **OSV.dev + CISA KEV + FIRST EPSS** database (`config/offline_vulns.json`).
+* **Filesystem & Host Posture (`TCP-HOST-001`):** Evaluates `icacls`/SDDL permissions on installation and auto-update directories, custom Trusted Root CAs, inbound Windows Firewall rules, and Windows Credential Manager targets.
 
+### Phase 2: Network Transport & Wire-Protocol Analysis
+* **PCAP/PCAPNG & Non-HTTP Dissectors (`TCP-NET-001`):** Extracts TLS SNI hostnames, flags legacy TLS handshakes, and decodes cleartext credentials/frames across HTTP, **MSSQL TDS**, **PostgreSQL**, **MQTT**, and **cleartext HTTP/2 / gRPC**.
+* **Active TLS & MITM Proxy Capture:** Optional scope-allowlisted TLS version/cipher probing and local `mitmdump` / HTTP CONNECT capture (`scripts/proxy_mitm_capture.ps1`).
 
-2. Installation & Collector Packaging
+### Phase 3: Managed Frameworks, Decompilation & Offline IPC
+* **Electron & ASAR Auditing (`TCP-ELEC-001`):** Inspects Electron Fuses and `app.asar` `webPreferences` (`nodeIntegration`, `contextIsolation`, `sandbox`, `webSecurity`).
+* **DLL Search-Order Hijacking (`TCP-HOST-002`):** Correlates static PE Import Address Tables (IAT) and Procmon CSV traces to detect phantom or user-writable DLL loads.
+* **Headless Decompilation & Code Rules:** Runs `ilspycmd` (`.NET`) or `jadx` (Java) with Semgrep/built-in rules to detect insecure TLS callbacks, SQL concatenation, and unsafe deserialization.
+* **Runtime State-Diff & IPC (`TCP-IPC-001`):** Audits offline Named Pipes, COM/DCOM registrations, SYSTEM scheduled tasks, custom URI handlers, and pre/post execution filesystem & `Run` registry diffs (`--state-diff`).
 
-Analyst Workstation Setup (Windows / Linux / macOS)
+### Phase 4: Authorization-Gated Runtime Memory Hygiene
+* **Post-Logout Memory & Frida API Hooks (`TCP-MEM-001`):** Scans post-logout `.dmp` memory dumps for retained session tokens/canaries and evaluates Frida runtime API trace logs (`--runtime-hooks`) for unencrypted DPAPI calls, cleartext WinHTTP requests, and user-writable DLL loads.
 
+---
+
+## Installation
+
+```powershell
+# 1. Create and activate virtual environment
 python -m venv .venv
-# Windows PowerShell: .\.venv\Scripts\Activate.ps1
-# Linux/macOS:        source .venv/bin/activate
+.\.venv\Scripts\Activate.ps1
 
-pip install -e ".[network,dev]"
-pytest
+# 2. Install TIRtcp and dependencies
+pip install --upgrade pip
+pip install -r requirements.txt
+pip install -e .
 
-Optional External CLI Tools (for Enhanced Coverage)
-TIRtcp runs cleanly without external binaries (flagging missing tools as Tooling Gap), but automatically leverages them when present on PATH:
-
-Code Signing: signtool.exe (Windows SDK), osslsigncode (Linux/macOS), or codesign (macOS).
-
-Supply Chain (SCA): syft + trivy or grype (supplements built-in native C/C++ DLL version fingerprinting).
-
-TLS Probing: testssl.sh (supplements built-in Python TLS 1.0/1.1, cipher, and certificate checks).
-
-Building the Portable Windows Collector (tirtcp-collector.exe)
-When assessing locked-down client VDIs/workstations where Python cannot be installed, package collector/collect_host.py (which uses only the Python standard library) into a standalone executable:
-XXXXX
-    pyinstaller --onefile --name tirtcp-collector collector/collect_host.py
-XXXXXX
-3. Standard Operating Procedure (SOP) for Engagements
-Step 1: Collect Read-Only Host Evidence (On Target Windows Machine)
-Run the portable collector under the target user context (and optionally as Administrator to inspect restricted service keys):
-
-.\tirtcp-collector.exe `
-  --app-dir "C:\Program Files\TargetClient" `
-  --filter "TargetClient" `
-  --output .\host_evidence.json
-
-.\tirtcp-collector.exe `
-  --app-dir "C:\Users\ADMIN\Downloads\vpro_secret\ModernPaint.exe" `
-  --filter "TargetClient" `
-  --output .\host_evidence.json
-
-
-(Optional) Export a Process Monitor (Procmon) trace as procmon.csv during normal application workflows (login, plugin load, auto-update) and capture network traffic to capture.pcap.
-
-Step 2: Run Offline Analysis (On Analyst Workstation)
-
-Standard Enterprise / DPDP Assessment (--compliance general):
-
-tirtcp \
-  --target ./TargetClient \
-  --evidence ./host_evidence.json \
-  --pcap ./capture.pcap \
-  --procmon-csv ./procmon.csv \
-  --compliance general \
-  --engagement-id ENG-2026-014 \
-  --output ./reports
-
-tirtcp \
-  --target ./C:\Users\ADMIN\Downloads\vpro_secret\ModernPaint.exe \
-  --evidence ./host_evidence.json \
-  --pcap ./capture.pcap \
-  --procmon-csv ./procmon.csv \
-  --compliance general \
-  --engagement-id ENG-2026-014 \
-  --output ./reports
-
-# 1. Install optional Frida dependency in .venv
-pip install frida
-
-# 2. Capture 20 seconds of runtime Win32/DPAPI/WinHTTP/DLL hook events
-python .\scripts\frida_hook_harness.py `
-  --target "C:\Users\ADMIN\Downloads\vpro_secret\ModernPaint.exe" `
-  --duration 20 `
-  --authorized `
-  --output .\evidence\ModernPaint\runtime_hooks.json
-
-# 3. Feed runtime_hooks.json into TIRtcp alongside static/host/PCAP evidence
-tirtcp `
-  --target "C:\Users\ADMIN\Downloads\vpro_secret" `
-  --evidence .\evidence\ModernPaint\host_evidence.json `
-  --runtime-hooks .\evidence\ModernPaint\runtime_hooks.json `
-  --authorized `
+Quick Start & CLI Usage
+1. Offline / Static Assessment
+python -m analyzer.tirtcp `
+  --target "C:\Program Files\TargetApp" `
   --compliance general `
-  --engagement-id ENG-2026-014 `
+  --engagement-id ENG-2026-001 `
   --no-active-probe `
   --output .\reports
 
-BFSI / Regulated Payment Assessment (--compliance bfsi):
-Activates PCI DSS v4.0.1 and RBI Digital Payment Security Controls (2021) mappings alongside DPDP Act 2023 / Rules 2025, OWASP ASVS v4.0.3 / MASVS v2.1.0, and CWE:
-tirtcp \
-  --target ./TargetClient \
-  --evidence ./host_evidence.json \
-  --pcap ./capture.pcap \
-  --endpoints broker.bank.local:8443 \
-  --compliance bfsi \
-  --engagement-id ENG-2026-015 \
-  --output ./reports
+  2. Full 4-Phase Assessment (with Host Evidence, PCAP, State Diff & PDF Export)
+  python -m analyzer.tirtcp `
+  --target "C:\Program Files\TargetApp" `
+  --evidence .\evidence\host_evidence.json `
+  --pcap .\evidence\capture.pcapng `
+  --procmon-csv .\evidence\procmon.csv `
+  --state-diff .\evidence\state_diff.json `
+  --runtime-hooks .\evidence\runtime_hooks.json `
+  --memory-dump .\evidence\post_logout.dmp `
+  --canary-markers "SessionSecret#2026" `
+  --compliance bfsi `
+  --authorized `
+  --engagement-id ENG-2026-BFSI `
+  --baseline-report .\reports\previous_run.json `
+  --pdf `
+  --output .\reports
 
-4. Authorization Gate & Regulatory Guardrails
-Mandatory Authorization Gate (--authorized + --engagement-id):
-Phase 4 runtime memory hygiene (--memory-dump) is locked by default. To analyze a post-logout diagnostic dump for lingering QA canary credentials, both --authorized and a valid --engagement-id must be supplied. Raw canary strings are hashed (SHA-256 prefix) and never written into reports; lingering artifacts are classified as Evidence of Retention with calibrated confidence scores (Low / Medium / High).
+  3. One-Command Windows Assessment Wrapper
 
-Compliance Posture Disclaimer:
-All reports explicitly note that technical checks support gap analysis against referenced standards and do not constitute formal legal or regulatory certification. CERT-In 2022 Directions mappings are tagged strictly as informational_support rather than Pass/Fail items.
+  .\scripts\assess_target.ps1 `
+  -Target "C:\Program Files\TargetApp\Client.exe" `
+  -Compliance bfsi `
+  -DynamicCapture `
+  -FridaHook `
+  -Authorized `
+  -EngagementId ENG-2026-002
 
-<ElicitationsGroup message="Your TIRtcp codebase and documentation are complete. Would you like to:">
-  <Elicitation label="Generate a sample vulnerable thick-client fixture generator for live demos" query="Write a Python helper script scripts/create_demo_target.py that builds a safe, self-contained synthetic vulnerable thick-client directory (PE binary, config with DB string, log with PAN, app.asar, PCAP, and host_evidence.json) to test TIRtcp end-to-end."/>
-  <Elicitation label="Design an executive remediation matrix template for client deliverables" query="Create a Markdown client report executive summary and remediation roadmap template tailored for TIRtcp findings across CWE, OWASP ASVS, DPDP Rules 2025, PCI DSS v4.0.1, and RBI DPSC."/>
-</ElicitationsGroup>
+Compliance Frameworks Supported
+
+General Profile (--compliance general): ISO/IEC 27001, OWASP Desktop/MASVS-aligned technical controls, and India DPDP Act / Rules 2025.
+
+BFSI Profile (--compliance bfsi): All General controls plus RBI Digital Payment Security Controls and PCI DSS v4.0.
+MDEOF
+
+echo "[3/3] Verifying requirements.txt & running pytest regression suite..."
+"$PYTHON_BIN" -m pytest -v tests/
+echo "[+] requirements.txt, pyproject.toml, and README.md updated and verified!"
+
+### Execute & Commit Documentation Update
+
+```powershell
+& "C:\Program Files\Git\bin\bash.exe" update_docs_and_reqs.sh
+Remove-Item -Force .\update_docs_and_reqs.sh -ErrorAction SilentlyContinue
+git add requirements.txt pyproject.toml README.md
+git commit -m "Update requirements.txt, pyproject.toml, and README.md for TIRtcp v1.0.0"
+git push origin main

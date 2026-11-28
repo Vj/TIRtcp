@@ -4,26 +4,32 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tirtcp"
-version = "0.1.0"
+version = "1.0.0"
 description = "Thick Client Penetration Testing & Regulatory Compliance Assessment Suite"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Proprietary - Internal Security Assessment Tool" }
 dependencies = [
     "PyYAML>=6.0.1",
-    "lief>=0.14.0",
-    "pefile>=2023.2.7",
+    "dnfile>=0.15.0",
+    "asn1crypto>=1.5.1",
 ]
 
 [project.optional-dependencies]
 network = [
     "scapy>=2.5.0",
+    "dpkt>=1.9.8",
+]
+reporting = [
+    "weasyprint>=62.0",
+]
+runtime = [
+    "frida>=16.2.0",
 ]
 dev = [
     "pytest>=8.0.0",
-    "pyinstaller>=6.0.0",
+    "pyinstaller>=6.10.0",
 ]
-
 [project.scripts]
 tirtcp = "analyzer.tirtcp:main"
 
